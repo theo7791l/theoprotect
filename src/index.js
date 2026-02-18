@@ -3,9 +3,13 @@ import { readdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import config from './config/config.js';
+import db from './database/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Initialize database
+db.init();
 
 // Create client
 const client = new Client({
@@ -15,7 +19,8 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildModeration,
-    GatewayIntentBits.GuildPresences
+    GatewayIntentBits.GuildPresences,
+    GatewayIntentBits.GuildVoiceStates
   ],
   partials: [Partials.Message, Partials.Channel, Partials.GuildMember]
 });
@@ -34,6 +39,7 @@ try {
       console.log(`✅ Loaded command: ${command.default.data.name}`);
     }
   }
+  console.log(`✅ Loaded ${client.commands.size} commands`);
 } catch (error) {
   console.log('⚠️  No commands folder found or empty');
 }
@@ -54,6 +60,7 @@ try {
       console.log(`✅ Loaded event: ${event.default.name}`);
     }
   }
+  console.log(`✅ Loaded ${eventFiles.length} events`);
 } catch (error) {
   console.log('⚠️  No events folder found or empty');
 }
@@ -67,6 +74,14 @@ client.login(config.token).catch(error => {
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('\n👋 Shutting down gracefully...');
+  db.close();
+  client.destroy();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n👋 Received SIGTERM, shutting down...');
+  db.close();
   client.destroy();
   process.exit(0);
 });
