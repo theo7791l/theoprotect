@@ -13,11 +13,14 @@
   "author": "theo7791l",
   "license": "MIT",
   "dependencies": {
-    "discord.js": "^14.16.0",
-    "dotenv": "^16.4.0",
-    "better-sqlite3": "^11.0.0",
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5",
+    "better-sqlite3": "^11.7.0",
     "canvas": "^2.11.2",
     "node-cron": "^3.0.3",
-    "axios": "^1.7.0"
+    "axios": "^1.7.9"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
