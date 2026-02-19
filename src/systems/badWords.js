@@ -4,6 +4,7 @@ class BadWordsFilter {
     // Insultes françaises (mots entiers uniquement)
     this.frenchWords = [
       // Insultes classiques
+      'con', 'cons', // Ajouté : "con" seul est une insulte
       'connard', 'connards', 'connarde', 'connardes', 'connasse', 'connasses',
       'salope', 'salopes', 'salopard', 'salopards', 'saloperie', 'saloperies',
       'pute', 'putes', 'putain', 'putains',
@@ -81,10 +82,11 @@ class BadWordsFilter {
     ];
     
     // Mots à ignorer (faux positifs) - TRÈS IMPORTANT
+    // NOTE: "con" seul N'EST PAS dans cette liste, donc il sera détecté
     this.whitelist = [
       // Mots français avec "con"
-      'acon', 'acon', 'acon', 'balcon', 'balcons', 'bacon', 'bacons',
-      'acon', 'acon', 'contenu', 'contenus', 'container', 'containers',
+      'acon', 'balcon', 'balcons', 'bacon', 'bacons',
+      'contenu', 'contenus', 'container', 'containers',
       'contrat', 'contrats', 'contracter', 'contractuel',
       'contre', 'contrer', 'controler', 'controle', 'contrôle', 'contrôler',
       'contour', 'contours', 'contourner',
@@ -126,13 +128,13 @@ class BadWordsFilter {
       'construction', 'construire', 'constructeur',
       'consulter', 'consultation', 'consultant', 'consulat',
       'consumer', 'consommé',
-      'contact', 'contacter',
       'contagieux', 'contagion',
       'contaminer', 'contamination',
       'contempler', 'contemplation',
       'contemporain', 'contemporaine',
       'content', 'contente', 'contenter',
       'contest', 'contester', 'contestation',
+      'concombre', 'concombres', // Ajouté explicitement
       
       // Mots anglais
       'assassin', 'assassinate', 'assembly', 'bass', 'bassist',
@@ -180,59 +182,49 @@ class BadWordsFilter {
   containsBadWords(message) {
     const normalized = this.normalizeText(message);
     
-    // Vérifier whitelist d'abord (PRIORITAIRE)
-    for (const whitelisted of this.whitelist) {
-      if (normalized.includes(whitelisted.toLowerCase())) {
-        return { detected: false };
-      }
-    }
-    
     // Séparer en mots individuels
     const words = normalized.split(' ');
     
-    // Vérifier mots français (correspondance EXACTE)
-    for (const badWord of this.frenchWords) {
-      // Vérifier mot exact dans la liste de mots
-      if (words.includes(badWord)) {
-        return {
-          detected: true,
-          word: badWord,
-          language: 'fr',
-          severity: this.getSeverity(badWord)
-        };
+    // Vérifier whitelist d'abord pour chaque mot (PRIORITAIRE)
+    for (const word of words) {
+      // Si le mot est whitelisté, ignorer toute détection pour ce mot
+      if (this.whitelist.some(w => w.toLowerCase() === word)) {
+        continue; // Passer au mot suivant
       }
       
-      // Vérifier expressions (plusieurs mots)
-      if (badWord.includes(' ') && normalized.includes(badWord)) {
-        return {
-          detected: true,
-          word: badWord,
-          language: 'fr',
-          severity: this.getSeverity(badWord)
-        };
+      // Vérifier si c'est un mot interdit EXACT
+      for (const badWord of [...this.frenchWords, ...this.englishWords]) {
+        if (word === badWord) {
+          return {
+            detected: true,
+            word: badWord,
+            language: this.frenchWords.includes(badWord) ? 'fr' : 'en',
+            severity: this.getSeverity(badWord)
+          };
+        }
       }
     }
     
-    // Vérifier mots anglais (correspondance EXACTE)
-    for (const badWord of this.englishWords) {
-      // Vérifier mot exact
-      if (words.includes(badWord)) {
-        return {
-          detected: true,
-          word: badWord,
-          language: 'en',
-          severity: this.getSeverity(badWord)
-        };
-      }
-      
-      // Vérifier expressions
+    // Vérifier expressions (plusieurs mots)
+    for (const badWord of [...this.frenchWords, ...this.englishWords]) {
       if (badWord.includes(' ') && normalized.includes(badWord)) {
-        return {
-          detected: true,
-          word: badWord,
-          language: 'en',
-          severity: this.getSeverity(badWord)
-        };
+        // Vérifier que l'expression n'est pas dans un mot whitelisté
+        let isWhitelisted = false;
+        for (const whitelisted of this.whitelist) {
+          if (normalized.includes(whitelisted.toLowerCase())) {
+            isWhitelisted = true;
+            break;
+          }
+        }
+        
+        if (!isWhitelisted) {
+          return {
+            detected: true,
+            word: badWord,
+            language: this.frenchWords.includes(badWord) ? 'fr' : 'en',
+            severity: this.getSeverity(badWord)
+          };
+        }
       }
     }
     
@@ -277,7 +269,7 @@ class BadWordsFilter {
     
     const mediumSeverity = [
       'fuck', 'shit', 'bitch', 'asshole',
-      'connard', 'salope', 'enculé', 'pute'
+      'connard', 'salope', 'enculé', 'pute', 'con'
     ];
     
     if (highSeverity.some(w => word.includes(w))) return 'high';

@@ -59,14 +59,15 @@ class AutoAntiSpam {
     );
     
     if (isSingleMessageFlood) {
-      console.log(`[Single Message Flood] Detected from ${message.author.tag} or webhook`);
+      const isBot = message.author.bot || !!message.webhookId;
+      console.log(`[Single Message Flood] Detected from ${message.author.tag} (Bot: ${isBot})`);
       
       try {
         // Supprimer le message
         await message.delete().catch(console.error);
         
-        // Si c'est un humain, sanctionner
-        if (!message.author.bot && !message.webhookId) {
+        // Si c'est un humain, sanctionner ET notifier publiquement
+        if (!isBot) {
           const key = `${message.author.id}-${message.guild.id}`;
           const sanctions = (this.floodSanctions.get(key) || 0) + 1;
           this.floodSanctions.set(key, sanctions);
@@ -108,23 +109,29 @@ class AutoAntiSpam {
           setTimeout(() => {
             this.floodSanctions.delete(key);
           }, 60 * 60 * 1000);
-        } else {
-          // Pour les bots/webhooks, juste notifier
-          await message.channel.send({
-            embeds: [{
-              color: 0xff6600,
-              title: '⚠️ Spam détecté',
-              description: `Message spam supprimé de **${message.author.tag}** (Bot/Webhook).\n\n⚠️ Si cela continue, bloquez ce bot/webhook.`,
-              timestamp: new Date().toISOString()
-            }]
-          }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 10000));
         }
         
-        // Log
+        // Log UNIQUEMENT (pas de notification publique pour les bots)
+        await this.logToChannel(message.guild, {
+          color: isBot ? 0xff6600 : 0xff0000,
+          title: isBot ? '⚠️ Spam de bot/webhook supprimé' : '🚨 Flood en un message',
+          description: 
+            `**Source:** ${message.author.tag} (${message.author.id})\n` +
+            `**Type:** ${isBot ? 'Bot/Webhook' : 'Utilisateur'}\n` +
+            `**Salon:** ${message.channel}\n` +
+            `**Longueur:** ${content.length} caractères\n` +
+            `**Action:** Message supprimé` +
+            (!isBot ? `\n**Sanction:** ${sanctions === 1 ? 'Mute 5 min' : sanctions === 2 ? 'Mute 30 min' : 'Kick'}` : ''),
+          fields: [
+            { name: 'Contenu', value: content.substring(0, 500) + (content.length > 500 ? '...' : '') }
+          ]
+        });
+        
+        // Log en database
         db.logAction(message.guild.id, {
           type: 'single_message_flood',
           user_id: message.author.id,
-          is_bot: message.author.bot || !!message.webhookId,
+          is_bot: isBot,
           message_length: content.length,
           timestamp: Date.now()
         });
@@ -192,24 +199,20 @@ class AutoAntiSpam {
       });
       
       // Log dans le salon de logs
-      const logChannel = message.guild.channels.cache.find(c => 
-        c.name.includes('log') || c.name.includes('theoprotect')
-      );
-      
-      if (logChannel && logChannel.isTextBased()) {
-        await logChannel.send({
-          embeds: [{
-            color: warnings === 0 ? 0xffa500 : 0xff0000,
-            title: '🤬 Langage inapproprié détecté',
-            description: `**Utilisateur:** ${message.author.tag} (${message.author.id})\n**Salon:** ${message.channel}\n**Mot détecté:** ||${detection.word}||\n**Sévérité:** ${detection.severity}\n**Avertissement:** ${warnings + 1}/2\n**Action:** ${warnings === 0 ? 'Avertissement' : 'Mute 10 minutes'}`,
-            fields: [
-              { name: 'Message original', value: message.content.substring(0, 1000) || 'Vide' }
-            ],
-            timestamp: new Date().toISOString(),
-            footer: { text: 'TheoProtect Auto-Moderation' }
-          }]
-        }).catch(console.error);
-      }
+      await this.logToChannel(message.guild, {
+        color: warnings === 0 ? 0xffa500 : 0xff0000,
+        title: '🤬 Langage inapproprié détecté',
+        description: 
+          `**Utilisateur:** ${message.author.tag} (${message.author.id})\n` +
+          `**Salon:** ${message.channel}\n` +
+          `**Mot détecté:** ||${detection.word}||\n` +
+          `**Sévérité:** ${detection.severity}\n` +
+          `**Avertissement:** ${warnings + 1}/2\n` +
+          `**Action:** ${warnings === 0 ? 'Avertissement' : 'Mute 10 minutes'}`,
+        fields: [
+          { name: 'Message original', value: message.content.substring(0, 1000) || 'Vide' }
+        ]
+      });
     } catch (error) {
       console.error('[Bad Words] Error handling:', error);
     }
@@ -239,24 +242,29 @@ class AutoAntiSpam {
     
     // Seuil: 10+ messages en 5 secondes dans le salon = FLOOD
     if (recentMessages.length >= 10) {
-      console.log(`[Global Flood] Detected in ${message.channel.name} (${recentMessages.length} messages in 5s)`);
-      console.log(`[Global Flood] Sources:`, recentMessages.map(m => `${m.authorTag} (${m.isBot ? 'Bot' : m.isWebhook ? 'Webhook' : 'User'})`));
+      const botCount = recentMessages.filter(m => m.isBot || m.isWebhook).length;
+      const humanCount = recentMessages.filter(m => !m.isBot && !m.isWebhook).length;
+      const isMostlyBots = botCount >= 8;
+      
+      console.log(`[Global Flood] Detected in ${message.channel.name} (${recentMessages.length} msg, ${botCount} bots, ${humanCount} humans)`);
       
       // Supprimer TOUS les messages du flood
       const deletedCount = await this.bulkDeleteMessages(message.channel, recentMessages.map(m => m.id));
       
       console.log(`[Global Flood] Deleted ${deletedCount} messages`);
       
-      // Notification
-      await message.channel.send({
-        embeds: [{
-          color: 0xff0000,
-          title: '🚨 Flood détecté',
-          description: `**${deletedCount} messages** supprimés pour flood massif dans ce salon.\n\n⚠️ **Sources:** Bots, Webhooks, et/ou utilisateurs.\n⚠️ Ralentissez le débit de messages ou bloquez les bots spammeurs !`,
-          timestamp: new Date().toISOString(),
-          footer: { text: 'TheoProtect Auto-Moderation' }
-        }]
-      }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 15000));
+      // Notification publique UNIQUEMENT si des humains sont impliqués
+      if (!isMostlyBots && humanCount > 0) {
+        await message.channel.send({
+          embeds: [{
+            color: 0xff0000,
+            title: '🚨 Flood détecté',
+            description: `**${deletedCount} messages** supprimés pour flood massif.\n\n⚠️ Ralentissez le débit de messages !`,
+            timestamp: new Date().toISOString(),
+            footer: { text: 'TheoProtect Auto-Moderation' }
+          }]
+        }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 10000));
+      }
       
       // Sanctionner les utilisateurs humains impliqués
       const humanAuthors = recentMessages.filter(m => !m.isBot && !m.isWebhook);
@@ -271,23 +279,19 @@ class AutoAntiSpam {
             this.floodSanctions.set(key, sanctions);
             
             if (sanctions === 1) {
-              // 1er: Mute 10 minutes
               await member.timeout(10 * 60 * 1000, '[Auto-Mod] Participation à un flood').catch(console.error);
               db.updateReputation(message.guild.id, authorId, -25);
               console.log(`[Global Flood] Muted ${member.user.tag} (10 min)`);
             } else if (sanctions === 2) {
-              // 2e: Mute 1 heure
               await member.timeout(60 * 60 * 1000, '[Auto-Mod] Flood répété').catch(console.error);
               db.updateReputation(message.guild.id, authorId, -40);
               console.log(`[Global Flood] Muted ${member.user.tag} (1 hour)`);
             } else {
-              // 3e+: Kick
               await member.kick('[Auto-Mod] Flood répété (3e fois)').catch(console.error);
               db.updateReputation(message.guild.id, authorId, -60);
               console.log(`[Global Flood] Kicked ${member.user.tag}`);
             }
             
-            // Reset après 2 heures
             setTimeout(() => {
               this.floodSanctions.delete(key);
             }, 2 * 60 * 60 * 1000);
@@ -297,31 +301,33 @@ class AutoAntiSpam {
         }
       }
       
-      // Si beaucoup de bots/webhooks, avertir
-      const botCount = recentMessages.filter(m => m.isBot || m.isWebhook).length;
-      if (botCount >= 8) {
-        const botAuthors = [...new Set(recentMessages.filter(m => m.isBot || m.isWebhook).map(m => m.authorTag))];
-        
-        await message.channel.send({
-          embeds: [{
-            color: 0xff6600,
-            title: '⚠️ Flood de bots/webhooks détecté',
-            description: `**${botCount} messages** provenant de bots ou webhooks ont été supprimés.\n\n**Sources:** ${botAuthors.join(', ')}\n\n💡 **Recommandation:** Bloquez ou retirez les permissions de ces bots s'ils spamment.`,
-            timestamp: new Date().toISOString()
-          }]
-        }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 20000));
-      }
+      // Log dans le salon de logs (TOUJOURS, même pour les bots)
+      const botAuthors = [...new Set(recentMessages.filter(m => m.isBot || m.isWebhook).map(m => m.authorTag))];
+      
+      await this.logToChannel(message.guild, {
+        color: isMostlyBots ? 0xff6600 : 0xff0000,
+        title: isMostlyBots ? '⚠️ Flood de bots/webhooks supprimé' : '🚨 Flood massif détecté',
+        description: 
+          `**Salon:** ${message.channel}\n` +
+          `**Messages supprimés:** ${deletedCount}\n` +
+          `**Bots/Webhooks:** ${botCount}\n` +
+          `**Utilisateurs:** ${humanCount}\n\n` +
+          (isMostlyBots ? `**Sources:** ${botAuthors.join(', ')}\n\n💡 **Recommandation:** Bloquez ou retirez les permissions de ces bots.` : ''),
+        fields: uniqueHumans.length > 0 ? [
+          { name: 'Utilisateurs sanctionnés', value: uniqueHumans.map(id => `<@${id}>`).join(', ') || 'Aucun' }
+        ] : []
+      });
       
       // Reset cache
       this.globalMessageCache.delete(channelKey);
       
-      // Log
+      // Log en database
       db.logAction(message.guild.id, {
         type: 'global_flood_detected',
         channel_id: message.channel.id,
         messages_count: deletedCount,
         bot_count: botCount,
-        human_count: humanAuthors.length,
+        human_count: humanCount,
         timestamp: now
       });
       
@@ -331,10 +337,29 @@ class AutoAntiSpam {
     return false;
   }
 
+  async logToChannel(guild, embedData) {
+    try {
+      const logChannel = guild.channels.cache.find(c => 
+        c.name.includes('log') || c.name.includes('theoprotect')
+      );
+      
+      if (logChannel && logChannel.isTextBased()) {
+        await logChannel.send({
+          embeds: [{
+            ...embedData,
+            timestamp: new Date().toISOString(),
+            footer: { text: 'TheoProtect Auto-Moderation' }
+          }]
+        }).catch(console.error);
+      }
+    } catch (error) {
+      console.error('[Log to channel] Error:', error);
+    }
+  }
+
   async bulkDeleteMessages(channel, messageIds) {
     let deletedCount = 0;
     
-    // Diviser en chunks de 100 (limite Discord)
     const chunks = [];
     for (let i = 0; i < messageIds.length; i += 100) {
       chunks.push(messageIds.slice(i, i + 100));
@@ -343,9 +368,7 @@ class AutoAntiSpam {
     for (const chunk of chunks) {
       try {
         if (chunk.length > 1) {
-          // Bulk delete (messages < 14 jours)
           await channel.bulkDelete(chunk, true).catch(async (err) => {
-            // Si bulk delete échoue, supprimer un par un
             console.log('[Bulk Delete] Failed, trying one by one...');
             for (const id of chunk) {
               try {
@@ -359,7 +382,6 @@ class AutoAntiSpam {
           });
           deletedCount += chunk.length;
         } else if (chunk.length === 1) {
-          // Supprimer le message individuel
           const msg = await channel.messages.fetch(chunk[0]).catch(() => null);
           if (msg) {
             await msg.delete().catch(console.error);
@@ -375,7 +397,6 @@ class AutoAntiSpam {
   }
 
   async checkRegularSpam(message, key, now, settings) {
-    // Spam classique (utilisateurs uniquement)
     if (!this.messageCache.has(key)) {
       this.messageCache.set(key, []);
     }
@@ -383,11 +404,9 @@ class AutoAntiSpam {
     const messages = this.messageCache.get(key);
     messages.push({ content: message.content, timestamp: now, id: message.id });
     
-    // Garder seulement les 10 derniers messages des 10 dernières secondes
     const recentMessages = messages.filter(m => now - m.timestamp < 10000).slice(-10);
     this.messageCache.set(key, recentMessages);
     
-    // Détection selon le niveau
     const thresholds = {
       low: { messages: 8, time: 5000 },
       medium: { messages: 6, time: 5000 },
@@ -401,7 +420,6 @@ class AutoAntiSpam {
     if (recentInWindow.length >= threshold.messages) {
       console.log(`[Anti-Spam] Detected from ${message.author.tag} (${recentInWindow.length} messages)`);
       
-      // Supprimer les messages
       for (const msg of recentInWindow) {
         try {
           const toDelete = await message.channel.messages.fetch(msg.id).catch(() => null);
@@ -409,12 +427,10 @@ class AutoAntiSpam {
         } catch (e) {}
       }
       
-      // Timeout
       if (message.member) {
         await message.member.timeout(5 * 60 * 1000, '[Auto-Mod] Spam détecté').catch(console.error);
       }
       
-      // Réduire réputation
       db.updateReputation(message.guild.id, message.author.id, -20);
       
       await message.channel.send({
@@ -422,7 +438,6 @@ class AutoAntiSpam {
         allowedMentions: { users: [message.author.id] }
       }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 5000));
       
-      // Clear cache
       this.messageCache.delete(key);
     }
   }
@@ -430,7 +445,6 @@ class AutoAntiSpam {
   clearCache() {
     const now = Date.now();
     
-    // Clear message cache
     for (const [key, messages] of this.messageCache.entries()) {
       const recent = messages.filter(m => now - m.timestamp < 60000);
       if (recent.length === 0) {
@@ -440,7 +454,6 @@ class AutoAntiSpam {
       }
     }
     
-    // Clear global cache
     for (const [key, messages] of this.globalMessageCache.entries()) {
       const recent = messages.filter(m => now - m.timestamp < 60000);
       if (recent.length === 0) {
