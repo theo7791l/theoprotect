@@ -63,44 +63,101 @@ export default {
         const packageJson = JSON.parse(readFileSync('./package.json', 'utf-8'));
         const currentVersion = packageJson.version;
 
+        // Récupérer la dernière release
         const response = await axios.get(
-          'https://api.github.com/repos/theo7791l/theoprotect/commits/main',
+          'https://api.github.com/repos/theo7791l/theoprotect/releases/latest',
           { timeout: 10000 }
         );
 
-        const latestCommit = response.data.sha.substring(0, 7);
-        const commitDate = new Date(response.data.commit.author.date);
-        const commitMessage = response.data.commit.message;
+        const latestVersion = response.data.tag_name.replace('v', '');
+        const releaseNotes = response.data.body || 'Aucune note de version';
+        const publishedAt = new Date(response.data.published_at);
+        const downloadUrl = response.data.html_url;
+
+        const isUpToDate = currentVersion === latestVersion;
 
         const embed = new EmbedBuilder()
-          .setColor(0x5865f2)
-          .setTitle('🔄 Informations de mise à jour')
+          .setColor(isUpToDate ? 0x00ff00 : 0xffa500)
+          .setTitle(isUpToDate ? '✅ Vous êtes à jour !' : '🔄 Mise à jour disponible')
           .addFields(
-            { name: 'Version actuelle', value: `v${currentVersion}`, inline: true },
-            { name: 'Dernier commit', value: latestCommit, inline: true },
-            { name: 'Date', value: `<t:${Math.floor(commitDate.getTime() / 1000)}:R>`, inline: true },
-            { name: '📝 Dernier changement', value: commitMessage.substring(0, 1024) }
-          )
-          .setDescription(
-            '**Pour mettre à jour:**\n' +
-            '1. `/update install` (automatique avec Git)\n' +
-            '2. `/update script` (script manuel)\n' +
-            '3. `git pull && npm install` (manuel)'
-          )
-          .setFooter({ text: 'TheoProtect Auto-Update' })
+            { name: '📌 Version actuelle', value: `v${currentVersion}`, inline: true },
+            { name: '🆕 Dernière version', value: `v${latestVersion}`, inline: true },
+            { name: '📅 Publiée le', value: `<t:${Math.floor(publishedAt.getTime() / 1000)}:R>`, inline: true }
+          );
+
+        if (!isUpToDate) {
+          embed.addFields({
+            name: '📝 Notes de version',
+            value: releaseNotes.length > 1024 ? releaseNotes.substring(0, 1021) + '...' : releaseNotes
+          });
+          embed.addFields({
+            name: '🔄 Comment mettre à jour',
+            value: 
+              `**Option 1 (Automatique) :**\n` +
+              `\`/update install\` dans Discord\n\n` +
+              `**Option 2 (Terminal) :**\n` +
+              `\`\`\`bash\ngit pull origin main\nnpm install\nnpm run deploy\n\`\`\`\n\n` +
+              `**Option 3 (Manuel) :**\n` +
+              `[Télécharger la release](${downloadUrl})`,
+            inline: false
+          });
+        }
+
+        embed.setFooter({ text: 'TheoProtect Auto-Update' })
           .setTimestamp();
 
         await interaction.editReply({ embeds: [embed] });
       } catch (error) {
         console.error('[Update] Check failed:', error);
         
-        const errorEmbed = new EmbedBuilder()
-          .setColor(0xff0000)
-          .setTitle('❌ Erreur de vérification')
-          .setDescription('Impossible de contacter GitHub. Vérifiez votre connexion.')
-          .setTimestamp();
+        // Si pas de release, afficher le dernier commit
+        try {
+          const packageJson = JSON.parse(readFileSync('./package.json', 'utf-8'));
+          const currentVersion = packageJson.version;
 
-        await interaction.editReply({ embeds: [errorEmbed] });
+          const commitResponse = await axios.get(
+            'https://api.github.com/repos/theo7791l/theoprotect/commits/main',
+            { timeout: 10000 }
+          );
+
+          const latestCommit = commitResponse.data.sha.substring(0, 7);
+          const commitDate = new Date(commitResponse.data.commit.author.date);
+          const commitMessage = commitResponse.data.commit.message;
+
+          const embed = new EmbedBuilder()
+            .setColor(0x5865f2)
+            .setTitle('🔄 Dernière version disponible')
+            .addFields(
+              { name: '📌 Version actuelle', value: `v${currentVersion}`, inline: true },
+              { name: '🔖 Dernier commit', value: latestCommit, inline: true },
+              { name: '📅 Date', value: `<t:${Math.floor(commitDate.getTime() / 1000)}:R>`, inline: true },
+              { name: '📝 Dernier changement', value: commitMessage.substring(0, 1024) }
+            )
+            .setDescription(
+              '**Pour mettre à jour :**\n' +
+              '• `/update install` (automatique avec Git)\n' +
+              '• Terminal : `git pull && npm install && npm run deploy`\n' +
+              '• Manuel : Télécharger depuis [GitHub](https://github.com/theo7791l/theoprotect)'
+            )
+            .setFooter({ text: 'Aucune release trouvée, affichage du dernier commit' })
+            .setTimestamp();
+
+          await interaction.editReply({ embeds: [embed] });
+        } catch (commitError) {
+          const errorEmbed = new EmbedBuilder()
+            .setColor(0xff0000)
+            .setTitle('❌ Erreur de vérification')
+            .setDescription(
+              'Impossible de contacter GitHub.\n\n' +
+              '**Vérifiez :**\n' +
+              '• Votre connexion internet\n' +
+              '• L\'accès à GitHub\n\n' +
+              'Réessayez dans quelques instants.'
+            )
+            .setTimestamp();
+
+          await interaction.editReply({ embeds: [errorEmbed] });
+        }
       }
     }
     else if (subcommand === 'script') {
@@ -116,8 +173,8 @@ export default {
       }
 
       const instructions = isWindows
-        ? `**Windows:**\n1. Ouvrez le dossier du bot\n2. Double-cliquez sur \`scripts/update.bat\`\n3. Suivez les instructions\n\nOu en ligne de commande :\n\`\`\`\ncd C:\\TheoProtect\\scripts\nupdate.bat\n\`\`\``
-        : `**Linux/macOS:**\n1. Ouvrez un terminal dans le dossier du bot\n2. Rendez le script exécutable :\n\`\`\`bash\nchmod +x scripts/update.sh\n\`\`\`\n3. Lancez-le :\n\`\`\`bash\n./scripts/update.sh\n\`\`\``;
+        ? `**Windows :**\n1. Ouvrez le dossier du bot\n2. Double-cliquez sur \`scripts/update.bat\`\n3. Suivez les instructions\n\nOu en ligne de commande :\n\`\`\`\ncd C:\\TheoProtect\\theoprotect\\scripts\nupdate.bat\n\`\`\``
+        : `**Linux/macOS :**\n1. Ouvrez un terminal dans le dossier du bot\n2. Rendez le script exécutable :\n\`\`\`bash\nchmod +x scripts/update.sh\n\`\`\`\n3. Lancez-le :\n\`\`\`bash\n./scripts/update.sh\n\`\`\``;
 
       const embed = new EmbedBuilder()
         .setColor(0x5865f2)
@@ -139,11 +196,6 @@ export default {
     else if (subcommand === 'install') {
       await interaction.deferReply({ ephemeral: true });
 
-      // Security check: owner only
-      if (interaction.user.id !== process.env.OWNER_ID) {
-        return interaction.editReply('❌ Seul le propriétaire du bot peut installer des mises à jour.');
-      }
-
       // Check if Git is available
       try {
         await execAsync('git --version');
@@ -160,7 +212,10 @@ export default {
         return interaction.editReply(
           '❌ **Ce n\'est pas un dépôt Git !**\n\n' +
           '💡 Le dossier n\'a pas été cloné avec Git.\n\n' +
-          '**Solution :** Utilisez `/update script` ou téléchargez manuellement depuis GitHub.'
+          '**Solutions :**\n' +
+          '• Utilisez `/update script` pour une mise à jour manuelle\n' +
+          '• Téléchargez depuis [GitHub](https://github.com/theo7791l/theoprotect)\n' +
+          '• Clonez avec : `git clone https://github.com/theo7791l/theoprotect.git`'
         );
       }
 
@@ -206,7 +261,7 @@ export default {
             '⚠️ Sinon, relancez manuellement le bot avec `npm start`.'
           )
           .addFields(
-            { name: 'Changements', value: pullOutput.substring(0, 1024) || 'Voir les logs Git' }
+            { name: '📝 Changements', value: pullOutput.substring(0, 1024) || 'Voir les logs Git' }
           )
           .setTimestamp();
 
@@ -225,13 +280,13 @@ export default {
           .setColor(0xff0000)
           .setTitle('❌ Échec de la mise à jour')
           .setDescription(
-            '**Erreur:**\n```\n' + error.message.substring(0, 1000) + '\n```\n\n' +
-            '**Solutions:**\n' +
-            '1. Utilisez `/update script` pour une mise à jour manuelle\n' +
-            '2. Vérifiez que Git est installé et configuré\n' +
-            '3. Assurez-vous d\'être dans un dépôt Git valide\n' +
-            '4. Vérifiez les permissions du dossier\n\n' +
-            '📚 Guide complet : https://github.com/theo7791l/theoprotect/blob/main/INSTALL.md'
+            '**Erreur :**\n```\n' + error.message.substring(0, 1000) + '\n```\n\n' +
+            '**Solutions :**\n' +
+            '• Utilisez `/update script` pour une mise à jour manuelle\n' +
+            '• Vérifiez que Git est installé et configuré\n' +
+            '• Assurez-vous d\'être dans un dépôt Git valide\n' +
+            '• Vérifiez les permissions du dossier\n\n' +
+            '📚 Guide : [INSTALL.md](https://github.com/theo7791l/theoprotect/blob/main/INSTALL.md)'
           )
           .setTimestamp();
 

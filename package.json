@@ -1,6 +1,6 @@
 {
   "name": "theoprotect",
-  "version": "0.0.1",
+  "version": "0.0.2-beta",
   "description": "Bot Discord de sécurité avancée - Anti-spam, Anti-Raid, Anti-Nuke, Captcha et plus",
   "main": "src/index.js",
   "type": "module",
