@@ -63,58 +63,53 @@ export default {
         const packageJson = JSON.parse(readFileSync('./package.json', 'utf-8'));
         const currentVersion = packageJson.version;
 
-        // Récupérer la dernière release
-        const response = await axios.get(
-          'https://api.github.com/repos/theo7791l/theoprotect/releases/latest',
-          { timeout: 10000 }
-        );
-
-        const latestVersion = response.data.tag_name.replace('v', '');
-        const releaseNotes = response.data.body || 'Aucune note de version';
-        const publishedAt = new Date(response.data.published_at);
-        const downloadUrl = response.data.html_url;
-
-        const isUpToDate = currentVersion === latestVersion;
-
-        const embed = new EmbedBuilder()
-          .setColor(isUpToDate ? 0x00ff00 : 0xffa500)
-          .setTitle(isUpToDate ? '✅ Vous êtes à jour !' : '🔄 Mise à jour disponible')
-          .addFields(
-            { name: '📌 Version actuelle', value: `v${currentVersion}`, inline: true },
-            { name: '🆕 Dernière version', value: `v${latestVersion}`, inline: true },
-            { name: '📅 Publiée le', value: `<t:${Math.floor(publishedAt.getTime() / 1000)}:R>`, inline: true }
+        // Récupérer la dernière release (si disponible)
+        try {
+          const response = await axios.get(
+            'https://api.github.com/repos/theo7791l/theoprotect/releases/latest',
+            { timeout: 10000 }
           );
 
-        if (!isUpToDate) {
-          embed.addFields({
-            name: '📝 Notes de version',
-            value: releaseNotes.length > 1024 ? releaseNotes.substring(0, 1021) + '...' : releaseNotes
-          });
-          embed.addFields({
-            name: '🔄 Comment mettre à jour',
-            value: 
-              `**Option 1 (Automatique + Restart) :**\n` +
-              `\`/update install\` → Mise à jour + redémarrage auto\n\n` +
-              `**Option 2 (Terminal) :**\n` +
-              `\`\`\`bash\ngit pull origin main\nnpm install\nnpm run deploy\nnpm start\n\`\`\`\n\n` +
-              `**Option 3 (Manuel) :**\n` +
-              `[Télécharger la release](${downloadUrl})`,
-            inline: false
-          });
-        }
+          const latestVersion = response.data.tag_name.replace('v', '');
+          const releaseNotes = response.data.body || 'Aucune note de version';
+          const publishedAt = new Date(response.data.published_at);
+          const downloadUrl = response.data.html_url;
 
-        embed.setFooter({ text: 'TheoProtect Auto-Update' })
-          .setTimestamp();
+          const isUpToDate = currentVersion === latestVersion;
 
-        await interaction.editReply({ embeds: [embed] });
-      } catch (error) {
-        console.error('[Update] Check failed:', error);
-        
-        // Si pas de release, afficher le dernier commit
-        try {
-          const packageJson = JSON.parse(readFileSync('./package.json', 'utf-8'));
-          const currentVersion = packageJson.version;
+          const embed = new EmbedBuilder()
+            .setColor(isUpToDate ? 0x00ff00 : 0xffa500)
+            .setTitle(isUpToDate ? '✅ Vous êtes à jour !' : '🔄 Mise à jour disponible')
+            .addFields(
+              { name: '📌 Version actuelle', value: `v${currentVersion}`, inline: true },
+              { name: '🆕 Dernière version', value: `v${latestVersion}`, inline: true },
+              { name: '📅 Publiée le', value: `<t:${Math.floor(publishedAt.getTime() / 1000)}:R>`, inline: true }
+            );
 
+          if (!isUpToDate) {
+            embed.addFields({
+              name: '📝 Notes de version',
+              value: releaseNotes.length > 1024 ? releaseNotes.substring(0, 1021) + '...' : releaseNotes
+            });
+            embed.addFields({
+              name: '🔄 Comment mettre à jour',
+              value: 
+                `**Option 1 (Automatique + Restart) :**\n` +
+                `\`/update install\` → Mise à jour + redémarrage auto\n\n` +
+                `**Option 2 (Terminal) :**\n` +
+                `\`\`\`bash\ngit pull origin main\nnpm install\nnpm run deploy\nnpm start\n\`\`\`\n\n` +
+                `**Option 3 (Manuel) :**\n` +
+                `[Télécharger la release](${downloadUrl})`,
+              inline: false
+            });
+          }
+
+          embed.setFooter({ text: 'TheoProtect Auto-Update' })
+            .setTimestamp();
+
+          await interaction.editReply({ embeds: [embed] });
+        } catch (releaseError) {
+          // Pas de release, afficher le dernier commit
           const commitResponse = await axios.get(
             'https://api.github.com/repos/theo7791l/theoprotect/commits/main',
             { timeout: 10000 }
@@ -143,21 +138,23 @@ export default {
             .setTimestamp();
 
           await interaction.editReply({ embeds: [embed] });
-        } catch (commitError) {
-          const errorEmbed = new EmbedBuilder()
-            .setColor(0xff0000)
-            .setTitle('❌ Erreur de vérification')
-            .setDescription(
-              'Impossible de contacter GitHub.\n\n' +
-              '**Vérifiez :**\n' +
-              '• Votre connexion internet\n' +
-              '• L\'accès à GitHub\n\n' +
-              'Réessayez dans quelques instants.'
-            )
-            .setTimestamp();
-
-          await interaction.editReply({ embeds: [errorEmbed] });
         }
+      } catch (error) {
+        console.error('[Update] Check failed:', error);
+        
+        const errorEmbed = new EmbedBuilder()
+          .setColor(0xff0000)
+          .setTitle('❌ Erreur de vérification')
+          .setDescription(
+            'Impossible de contacter GitHub.\n\n' +
+            '**Vérifiez :**\n' +
+            '• Votre connexion internet\n' +
+            '• L\'accès à GitHub\n\n' +
+            'Réessayez dans quelques instants.'
+          )
+          .setTimestamp();
+
+        await interaction.editReply({ embeds: [errorEmbed] });
       }
     }
     else if (subcommand === 'script') {
@@ -236,50 +233,63 @@ export default {
         await interaction.editReply(`📦 ${updatesAvailable} mise(s) à jour disponible(s)\n\n🔄 Téléchargement...`);
 
         // Pull from git
-        const { stdout: pullOutput, stderr: pullError } = await execAsync('git pull origin main');
+        const { stdout: pullOutput, stderr: pullStderr } = await execAsync('git pull origin main');
         
-        if (pullError && !pullError.includes('Already up to date')) {
-          throw new Error(pullError);
+        // Vérifier si c'est vraiment une erreur (ignorer les warnings normaux)
+        const hasCriticalError = pullStderr && !pullStderr.includes('Already up to date') && !pullStderr.includes('From https://github');
+        
+        if (hasCriticalError) {
+          console.warn('[Update] Git stderr (non-fatal):', pullStderr);
         }
 
-        await interaction.editReply('📦 Installation des dépendances...');
+        // Si le pull a réussi (même avec stderr non critique)
+        if (pullOutput.includes('Already up to date') || pullOutput.includes('Fast-forward') || pullOutput.includes('files changed')) {
+          await interaction.editReply('📦 Installation des dépendances...');
 
-        // Install dependencies
-        await execAsync('npm install');
+          // Install dependencies (ignorer les warnings npm)
+          try {
+            await execAsync('npm install', { timeout: 120000 }); // 2 min timeout
+          } catch (npmError) {
+            // Si npm install échoue partiellement, continuer quand même
+            console.warn('[Update] npm install warnings:', npmError.stderr || npmError.message);
+          }
 
-        await interaction.editReply('⚙️ Déploiement des commandes...');
+          await interaction.editReply('⚙️ Déploiement des commandes...');
 
-        // Deploy commands
-        await execAsync('npm run deploy');
+          // Deploy commands
+          await execAsync('npm run deploy');
 
-        const embed = new EmbedBuilder()
-          .setColor(0x00ff00)
-          .setTitle('✅ Mise à jour terminée !')
-          .setDescription(
-            '🔄 **Le bot va redémarrer automatiquement dans 5 secondes...**\n\n' +
-            '✨ Toutes les nouvelles fonctionnalités seront activées au redémarrage.\n\n' +
-            '⚠️ **Note :** Si vous utilisez PM2, systemd ou Docker, le redémarrage sera automatique.\n' +
-            '⚠️ **Sinon**, relancez manuellement avec `npm start` si le bot ne redémarre pas.'
-          )
-          .addFields(
-            { name: '📝 Changements appliqués', value: pullOutput.substring(0, 1000) || 'Mises à jour installées avec succès' }
-          )
-          .setFooter({ text: 'Redémarrage automatique en cours...' })
-          .setTimestamp();
+          const embed = new EmbedBuilder()
+            .setColor(0x00ff00)
+            .setTitle('✅ Mise à jour terminée !')
+            .setDescription(
+              '🔄 **Le bot va redémarrer automatiquement dans 5 secondes...**\n\n' +
+              '✨ Toutes les nouvelles fonctionnalités seront activées au redémarrage.\n\n' +
+              '⚠️ **Note :** Si vous utilisez PM2, systemd ou Docker, le redémarrage sera automatique.\n' +
+              '⚠️ **Sinon**, relancez manuellement avec `npm start` si le bot ne redémarre pas.'
+            )
+            .addFields(
+              { name: '📝 Changements appliqués', value: pullOutput.substring(0, 1000) || 'Mises à jour installées avec succès' }
+            )
+            .setFooter({ text: 'Redémarrage automatique en cours...' })
+            .setTimestamp();
 
-        await interaction.editReply({ embeds: [embed] });
+          await interaction.editReply({ embeds: [embed] });
 
-        // Log restart
-        console.log('');
-        console.log('══════════════════════════════════════════════════');
-        console.log('🔄 AUTO-RESTART: Update completed, restarting bot...');
-        console.log('══════════════════════════════════════════════════');
-        console.log('');
+          // Log restart
+          console.log('');
+          console.log('══════════════════════════════════════════════════');
+          console.log('🔄 AUTO-RESTART: Update completed, restarting bot...');
+          console.log('══════════════════════════════════════════════════');
+          console.log('');
 
-        // Restart bot after 5 seconds
-        setTimeout(() => {
-          process.exit(0); // Exit code 0 = normal exit, PM2/systemd will auto-restart
-        }, 5000);
+          // Restart bot after 5 seconds
+          setTimeout(() => {
+            process.exit(0); // Exit code 0 = normal exit, PM2/systemd will auto-restart
+          }, 5000);
+        } else {
+          throw new Error('Échec du git pull : ' + pullOutput);
+        }
 
       } catch (error) {
         console.error('[Update] Install failed:', error);
@@ -288,7 +298,7 @@ export default {
           .setColor(0xff0000)
           .setTitle('❌ Échec de la mise à jour')
           .setDescription(
-            '**Erreur :**\n```\n' + error.message.substring(0, 1000) + '\n```\n\n' +
+            '**Erreur :**\n```\n' + (error.message || error.stderr || error).toString().substring(0, 1000) + '\n```\n\n' +
             '**Solutions :**\n' +
             '• Utilisez `/update script` pour une mise à jour manuelle\n' +
             '• Vérifiez que Git est installé et configuré\n' +
