@@ -7,22 +7,21 @@ class AutoAntiSpam {
     this.warningsCache = new Map(); // userId-guildId -> count
     this.globalMessageCache = new Map(); // guildId-channelId -> [all messages]
     this.floodSanctions = new Map(); // userId-guildId -> sanction count
+    this.botSpamCache = new Map(); // Track bot spam per bot per channel
   }
 
   async checkMessage(message) {
     if (!message.guild) return;
-    
-    // NE PLUS IGNORER LES BOTS - Tous les messages sont vérifiés pour flood
-    // (Bad words seulement pour humains)
     
     const settings = db.getGuildSettings(message.guild.id);
     if (!settings.antispam_enabled) return;
     
     const key = `${message.author.id}-${message.guild.id}`;
     const now = Date.now();
+    const isBot = message.author.bot || !!message.webhookId;
     
     // 1. Vérifier les mots inappropriés (seulement pour messages humains)
-    if (!message.author.bot && !message.webhookId) {
+    if (!isBot) {
       const badWordCheck = badWords.containsBadWords(message.content);
       if (badWordCheck.detected) {
         await this.handleBadWord(message, badWordCheck);
@@ -31,7 +30,8 @@ class AutoAntiSpam {
     }
     
     // 2. Vérifier message long/spam en un seul message (TOUS)
-    if (await this.checkSingleMessageFlood(message)) {
+    // Pour les BOTS: suppression SILENCIEUSE + log immédiat
+    if (await this.checkSingleMessageFlood(message, isBot)) {
       return; // Message géré
     }
     
@@ -41,12 +41,12 @@ class AutoAntiSpam {
     }
     
     // 4. Vérifier spam classique (seulement utilisateurs)
-    if (!message.author.bot && !message.webhookId) {
+    if (!isBot) {
       await this.checkRegularSpam(message, key, now, settings);
     }
   }
 
-  async checkSingleMessageFlood(message) {
+  async checkSingleMessageFlood(message, isBot) {
     const content = message.content;
     
     // Détection de spam en un seul message
@@ -59,22 +59,45 @@ class AutoAntiSpam {
     );
     
     if (isSingleMessageFlood) {
-      const isBot = message.author.bot || !!message.webhookId;
       console.log(`[Single Message Flood] Detected from ${message.author.tag} (Bot: ${isBot})`);
       
       try {
-        // Supprimer le message
+        // Supprimer le message IMMÉDIATEMENT
         await message.delete().catch(console.error);
         
-        // Si c'est un humain, sanctionner ET notifier publiquement
-        if (!isBot) {
-          const key = `${message.author.id}-${message.guild.id}`;
+        // Pour les BOTS: Log immédiat dans le salon de logs, PAS de notification publique
+        if (isBot) {
+          // Track bot spam
+          const botKey = `${message.author.id}-${message.channel.id}`;
+          const spamCount = (this.botSpamCache.get(botKey) || 0) + 1;
+          this.botSpamCache.set(botKey, spamCount);
+          
+          // Clear cache after 1 minute
+          setTimeout(() => {
+            this.botSpamCache.delete(botKey);
+          }, 60000);
+          
+          // Log dans le salon de logs UNIQUEMENT (silencieux)
+          await this.logToChannel(message.guild, {
+            color: 0xff6600,
+            title: '🤖 Message spam de bot supprimé',
+            description: 
+              `**Bot:** ${message.author.tag} (${message.author.id})\n` +
+              `**Salon:** ${message.channel}\n` +
+              `**Longueur:** ${content.length} caractères\n` +
+              `**Total supprimé:** ${spamCount} message(s) de ce bot\n\n` +
+              `💡 **Recommandation:** Si cela continue, bloquez ce bot ou retirez ses permissions.`,
+            fields: [
+              { name: 'Aperçu du contenu', value: content.substring(0, 500) + (content.length > 500 ? '...' : '') }
+            ]
+          });
+        } else {
+          // Pour les HUMAINS: Sanctions + notification publique
           const sanctions = (this.floodSanctions.get(key) || 0) + 1;
           this.floodSanctions.set(key, sanctions);
           
           // Sanctions progressives
           if (sanctions === 1) {
-            // 1er: Mute 5 minutes
             await message.member?.timeout(5 * 60 * 1000, '[Auto-Mod] Spam/Flood en un message').catch(console.error);
             db.updateReputation(message.guild.id, message.author.id, -20);
             
@@ -83,7 +106,6 @@ class AutoAntiSpam {
               allowedMentions: { users: [message.author.id] }
             }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 5000));
           } else if (sanctions === 2) {
-            // 2e: Mute 30 minutes
             await message.member?.timeout(30 * 60 * 1000, '[Auto-Mod] Flood répété').catch(console.error);
             db.updateReputation(message.guild.id, message.author.id, -30);
             
@@ -92,7 +114,6 @@ class AutoAntiSpam {
               allowedMentions: { users: [message.author.id] }
             }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 5000));
           } else {
-            // 3e+: Kick
             try {
               await message.member?.kick('[Auto-Mod] Flood répété (3e fois)');
               db.updateReputation(message.guild.id, message.author.id, -50);
@@ -105,27 +126,24 @@ class AutoAntiSpam {
             }
           }
           
-          // Reset après 1 heure
           setTimeout(() => {
             this.floodSanctions.delete(key);
           }, 60 * 60 * 1000);
+          
+          // Log pour humains
+          await this.logToChannel(message.guild, {
+            color: 0xff0000,
+            title: '🚨 Flood utilisateur détecté',
+            description: 
+              `**Utilisateur:** ${message.author.tag} (${message.author.id})\n` +
+              `**Salon:** ${message.channel}\n` +
+              `**Longueur:** ${content.length} caractères\n` +
+              `**Sanction:** ${sanctions === 1 ? 'Mute 5 min' : sanctions === 2 ? 'Mute 30 min' : 'Kick'}`,
+            fields: [
+              { name: 'Contenu', value: content.substring(0, 500) + (content.length > 500 ? '...' : '') }
+            ]
+          });
         }
-        
-        // Log UNIQUEMENT (pas de notification publique pour les bots)
-        await this.logToChannel(message.guild, {
-          color: isBot ? 0xff6600 : 0xff0000,
-          title: isBot ? '⚠️ Spam de bot/webhook supprimé' : '🚨 Flood en un message',
-          description: 
-            `**Source:** ${message.author.tag} (${message.author.id})\n` +
-            `**Type:** ${isBot ? 'Bot/Webhook' : 'Utilisateur'}\n` +
-            `**Salon:** ${message.channel}\n` +
-            `**Longueur:** ${content.length} caractères\n` +
-            `**Action:** Message supprimé` +
-            (!isBot ? `\n**Sanction:** ${sanctions === 1 ? 'Mute 5 min' : sanctions === 2 ? 'Mute 30 min' : 'Kick'}` : ''),
-          fields: [
-            { name: 'Contenu', value: content.substring(0, 500) + (content.length > 500 ? '...' : '') }
-          ]
-        });
         
         // Log en database
         db.logAction(message.guild.id, {
@@ -306,7 +324,7 @@ class AutoAntiSpam {
       
       await this.logToChannel(message.guild, {
         color: isMostlyBots ? 0xff6600 : 0xff0000,
-        title: isMostlyBots ? '⚠️ Flood de bots/webhooks supprimé' : '🚨 Flood massif détecté',
+        title: isMostlyBots ? '⚠️ Flood massif de bots supprimé' : '🚨 Flood massif détecté',
         description: 
           `**Salon:** ${message.channel}\n` +
           `**Messages supprimés:** ${deletedCount}\n` +
@@ -461,6 +479,11 @@ class AutoAntiSpam {
       } else {
         this.globalMessageCache.set(key, recent);
       }
+    }
+    
+    // Clear bot spam cache
+    for (const [key, count] of this.botSpamCache.entries()) {
+      this.botSpamCache.delete(key);
     }
   }
 }
