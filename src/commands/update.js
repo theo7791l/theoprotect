@@ -22,7 +22,7 @@ export default {
     .addSubcommand(subcommand =>
       subcommand
         .setName('install')
-        .setDescription('Installer la dernière version automatiquement')
+        .setDescription('Installer la dernière version et redémarrer automatiquement')
     )
     .addSubcommand(subcommand =>
       subcommand
@@ -93,10 +93,10 @@ export default {
           embed.addFields({
             name: '🔄 Comment mettre à jour',
             value: 
-              `**Option 1 (Automatique) :**\n` +
-              `\`/update install\` dans Discord\n\n` +
+              `**Option 1 (Automatique + Restart) :**\n` +
+              `\`/update install\` → Mise à jour + redémarrage auto\n\n` +
               `**Option 2 (Terminal) :**\n` +
-              `\`\`\`bash\ngit pull origin main\nnpm install\nnpm run deploy\n\`\`\`\n\n` +
+              `\`\`\`bash\ngit pull origin main\nnpm install\nnpm run deploy\nnpm start\n\`\`\`\n\n` +
               `**Option 3 (Manuel) :**\n` +
               `[Télécharger la release](${downloadUrl})`,
             inline: false
@@ -135,7 +135,7 @@ export default {
             )
             .setDescription(
               '**Pour mettre à jour :**\n' +
-              '• `/update install` (automatique avec Git)\n' +
+              '• `/update install` (automatique + redémarrage)\n' +
               '• Terminal : `git pull && npm install && npm run deploy`\n' +
               '• Manuel : Télécharger depuis [GitHub](https://github.com/theo7791l/theoprotect)'
             )
@@ -256,21 +256,29 @@ export default {
           .setColor(0x00ff00)
           .setTitle('✅ Mise à jour terminée !')
           .setDescription(
-            '**Le bot va redémarrer dans 5 secondes.**\n\n' +
-            '⚠️ Si vous utilisez PM2 ou un gestionnaire de processus, le redémarrage sera automatique.\n' +
-            '⚠️ Sinon, relancez manuellement le bot avec `npm start`.'
+            '🔄 **Le bot va redémarrer automatiquement dans 5 secondes...**\n\n' +
+            '✨ Toutes les nouvelles fonctionnalités seront activées au redémarrage.\n\n' +
+            '⚠️ **Note :** Si vous utilisez PM2, systemd ou Docker, le redémarrage sera automatique.\n' +
+            '⚠️ **Sinon**, relancez manuellement avec `npm start` si le bot ne redémarre pas.'
           )
           .addFields(
-            { name: '📝 Changements', value: pullOutput.substring(0, 1024) || 'Voir les logs Git' }
+            { name: '📝 Changements appliqués', value: pullOutput.substring(0, 1000) || 'Mises à jour installées avec succès' }
           )
+          .setFooter({ text: 'Redémarrage automatique en cours...' })
           .setTimestamp();
 
         await interaction.editReply({ embeds: [embed] });
 
+        // Log restart
+        console.log('');
+        console.log('══════════════════════════════════════════════════');
+        console.log('🔄 AUTO-RESTART: Update completed, restarting bot...');
+        console.log('══════════════════════════════════════════════════');
+        console.log('');
+
         // Restart bot after 5 seconds
         setTimeout(() => {
-          console.log('🔄 Restarting bot after update...');
-          process.exit(0); // PM2/systemd will auto-restart
+          process.exit(0); // Exit code 0 = normal exit, PM2/systemd will auto-restart
         }, 5000);
 
       } catch (error) {
