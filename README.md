@@ -1,228 +1,239 @@
 # 🛡️ TheoProtect
 
-**TheoProtect** est un bot Discord de sécurité avancée 100% open source en Node.js, conçu pour offrir une protection complète contre les raids, le spam, le phishing et les attaques nuke.
+**TheoProtect** est un bot Discord de sécurité avancée 100% open source en Node.js, conçu pour offrir une protection complète contre les raids, le spam, le phishing, le contenu NSFW et les attaques nuke.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
-[![Discord.js](https://img.shields.io/badge/discord.js-v14-blue)](https://discord.js.org/)
+[![Discord.js](https://img.shields.io/badge/discord.js-v14.16.3-blue)](https://discord.js.org/)
+[![Windows](https://img.shields.io/badge/Windows-compatible-blue)]()
+[![Linux](https://img.shields.io/badge/Linux-compatible-green)]()
+
+> ⚡ **Version 1.0 - Complètement fonctionnel et testé**
+
+---
 
 ## ✨ Fonctionnalités
 
 ### 🔒 Sécurité avancée
 
 #### 🛡️ Anti-Spam intelligent
-- Détection multi-niveaux (flood, duplicatas, mentions, emojis, liens)
-- Système de scoring dynamique avec sanctions graduelles
-- Détection de selfbots et patterns Discord
-- 4 niveaux de sécurité : Faible, Moyen, Élevé, Extrême
+- ✅ Détection multi-niveaux (flood, duplicatas, mentions, emojis, liens)
+- ✅ Système de scoring dynamique avec sanctions graduelles (warn → timeout → kick → ban)
+- ✅ Détection de selfbots et patterns Discord (invites, commandes externes)
+- ✅ 4 niveaux de sécurité configurables : Faible, Moyen, Élevé, Extrême
+- ✅ Auto-escalade selon le score de violation cumulé
 
 #### 🚨 Anti-Raid avec détection de patterns
-- Analyse intelligente des nouveaux membres (algorithme Levenshtein)
-- Détection : comptes jeunes, avatars par défaut, noms suspects
-- Mode raid automatique lors de joins massifs (>10 en 10s)
-- Système de quarantaine automatique
-- Tracking des noms coordonnés (attaques organisées)
+- ✅ Analyse intelligente des nouveaux membres (algorithme Levenshtein)
+- ✅ Détection : comptes jeunes, avatars par défaut, noms suspects, homograph attacks
+- ✅ Mode raid automatique lors de joins massifs (>10 en 10s)
+- ✅ Système de quarantaine automatique pour comptes suspects
+- ✅ Tracking des noms coordonnés (détection d'attaques organisées)
+- ✅ Scores de risque personnalisés par membre
 
 #### 🔨 Anti-Nuke révolutionnaire
-- Surveillance des actions critiques en temps réel
-- Thresholds configurables par type d'action
-- Retrait instantané des permissions dangereuses
-- Système de backup automatique (salons, rôles, permissions)
-- Bannissement automatique des attaquants
+- ✅ Surveillance des actions critiques en temps réel
+- ✅ Thresholds configurables par type d'action (channel delete, role delete, bans massifs)
+- ✅ Retrait instantané des permissions dangereuses avant bannissement
+- ✅ Système de backup automatique (salons, rôles, permissions)
+- ✅ Logs détaillés dans salon dédié avec preuves
 
 #### 🎯 Anti-Phishing en temps réel
-- Base de données de patterns mise à jour (Discord Nitro scams, Steam, etc.)
-- Intégration Google Safe Browsing API (optionnel)
-- Intégration PhishTank pour vérification externe
-- Détection de TLDs suspects et homograph attacks
-- Système de cache pour optimisation
+- ✅ Base de données de patterns constamment mise à jour (Discord Nitro scams, Steam, etc.)
+- ✅ Intégration Google Safe Browsing API (optionnel avec clé API)
+- ✅ Intégration PhishTank pour vérification externe
+- ✅ Détection de TLDs suspects (.tk, .ml, .ru, etc.)
+- ✅ Détection d'homograph attacks (caractères cyrilliques)
+- ✅ Système de cache pour optimisation des performances
+
+#### 🖼️ Détection NSFW (API Sightengine)
+- ✅ Analyse automatique des images postées (attachments, embeds, URLs)
+- ✅ Détection : nudité, contenu sexuel, gore, contenu offensant
+- ✅ Score de confiance par image (0-100%)
+- ✅ Actions automatiques selon la sévérité (delete, warn, timeout, ban)
+- ✅ Configuration optionnelle (nécessite clés API Sightengine)
+
+#### 🤖 AI Moderator (OpenAI)
+- ✅ Analyse intelligente des messages complexes
+- ✅ Détection avancée : toxicité, harcèlement, discours haineux, manipulation
+- ✅ Contexte utilisateur (historique, réputation, warnings)
+- ✅ Catégorisation et scoring de sévérité (0-10)
+- ✅ Niveau de confiance pour chaque détection (70% min pour action)
+- ✅ Configuration optionnelle (nécessite clé API OpenAI)
 
 #### 🔐 Captcha visuel personnalisable
-- Génération d'images avec Canvas (distorsion, rotation)
-- Codes aléatoires de 6 caractères
-- Timeout configurable (5 min par défaut)
-- Tentatives limitées (3 max)
-- Kick automatique en cas d'échec
+- ✅ Génération d'images avec Canvas (distorsion, rotation, bruit)
+- ✅ Codes aléatoires de 6 caractères
+- ✅ Timeout configurable (5 min par défaut)
+- ✅ Tentatives limitées (3 max)
+- ✅ Kick automatique en cas d'échec ou timeout
 
 ### 🤖 Modération puissante
 
-#### Commandes disponibles
-- `/warn [user] [reason]` — Avertir un membre
-- `/warnings [user]` — Voir les avertissements
-- `/clearwarns [user]` — Effacer les warnings
-- `/timeout [user] [duration] [reason]` — Timeout
-- `/ban [user] [reason]` — Bannir
-- `/reputation [user]` — Voir la réputation
+#### Commandes de modération
+- ✅ `/warn [user] [reason]` — Avertir un membre avec auto-escalade (3 warns = timeout 1h, 5 warns = ban)
+- ✅ `/warnings [user]` — Voir l'historique des avertissements
+- ✅ `/clearwarns [user]` — Effacer tous les avertissements
+- ✅ `/reputation [user]` — Voir la réputation et le niveau de confiance
 
-#### Modération vocale
-- `/voicemod muteall [channel]` — Mute tous les membres
-- `/voicemod unmuteall [channel]` — Unmute tous
-- `/voicemod disconnectall [channel]` — Déconnecter tous
-- `/voicemod moveall [source] [dest]` — Déplacer en masse
+#### Modération vocale avancée
+- ✅ `/voicemod muteall [channel]` — Mute tous les membres d'un salon vocal
+- ✅ `/voicemod unmuteall [channel]` — Unmute tous les membres
+- ✅ `/voicemod disconnectall [channel]` — Déconnecter tous les membres
+- ✅ `/voicemod moveall [source] [dest]` — Déplacer en masse vers un autre salon
 
 ### 📊 Fonctionnalités uniques
 
 #### 🏆 Système de réputation
-- Score de confiance pour chaque membre (0-200)
-- Tracking des violations et actions positives
-- Niveaux : Très faible, Faible, Moyen, Bon, Excellent
-- Incrémentation automatique pour activité saine
+- ✅ Score de confiance pour chaque membre (0-200)
+- ✅ Tracking automatique : messages, violations, actions positives
+- ✅ 5 niveaux : Très faible (🔴), Faible (🔴), Moyen (🟠), Bon (🟡), Excellent (🟢)
+- ✅ Incrémentation automatique pour activité saine (+0.1 par message)
+- ✅ Décrémentation selon les sanctions (-2 à -50)
 
 #### 🔒 Smart Lockdown progressif
-- **Soft** : Bloque les messages uniquement
-- **Medium** : + fichiers et threads
-- **Hard** : + vocal complet
-- **Raid** : Mode urgence (kick nouveaux membres)
-- Auto-escalade selon le niveau de menace
+- ✅ **Soft** : Bloque uniquement les messages + réactions
+- ✅ **Medium** : + fichiers et threads
+- ✅ **Hard** : + vocal complet (connect, speak)
+- ✅ **Raid** : Mode urgence total (kick nouveaux membres, view channels)
+- ✅ Auto-escalade selon le niveau de menace détecté
+- ✅ Restauration automatique des permissions originales
 
 #### 🗄️ Backup & Restauration
-- Sauvegarde complète (salons, rôles, permissions)
-- Historique des backups avec ID
-- Restauration rapide après attaque
+- ✅ Sauvegarde complète (salons, rôles, permissions, position)
+- ✅ Historique des backups avec ID unique
+- ✅ Metadata détaillée (date, nombre d'éléments)
+- ✅ Stockage en base de données SQLite
 
-#### 📝 Logs détaillés
-- Base de données SQLite persistante
-- Historique complet des actions de modération
-- Tracking des raids avec statistiques
-- Preuves conservées (URLs, patterns détectés)
+#### 📝 Base de données persistante
+- ✅ SQLite avec mode WAL (Write-Ahead Logging)
+- ✅ Tables : settings, reputation, warnings, logs, raid_history, backups
+- ✅ Historique complet des actions de modération avec preuves
+- ✅ Statistiques par serveur et par utilisateur
+
+---
 
 ## 🚀 Installation
 
 ### Prérequis
 - **Node.js 18+** ([télécharger](https://nodejs.org/))
-- **NPM** ou Yarn
-- Un bot Discord ([Discord Developer Portal](https://discord.com/developers/applications))
+- **NPM** (inclus avec Node.js)
+- Un bot Discord créé sur le [Discord Developer Portal](https://discord.com/developers/applications)
 
-### Étapes
+### 🐧 Installation Linux / macOS
 
-1. **Cloner le repo**
 ```bash
+# 1. Cloner le repository
 git clone https://github.com/theo7791l/theoprotect.git
 cd theoprotect
-```
 
-2. **Installer les dépendances**
-```bash
+# 2. Installer les dépendances
 npm install
-```
 
-3. **Configurer l'environnement**
-```bash
+# 3. Configurer l'environnement
 cp .env.example .env
+nano .env  # ou vim, code, etc.
+
+# 4. Déployer les commandes
+npm run deploy
+
+# 5. Lancer le bot
+npm start
 ```
 
-Éditez `.env` :
+### 💻 Installation Windows
+
+```powershell
+# 1. Cloner le repository
+git clone https://github.com/theo7791l/theoprotect.git
+cd theoprotect
+
+# 2. Installer les dépendances
+npm install
+
+# 3. Configurer l'environnement
+copy .env.example .env
+notepad .env  # ou VSCode
+
+# 4. Déployer les commandes
+npm run deploy
+
+# 5. Lancer le bot
+npm start
+```
+
+### ⚙️ Configuration du fichier .env
+
 ```env
+# Configuration de base (REQUIS)
 DISCORD_TOKEN=votre_token_ici
 CLIENT_ID=votre_client_id
 OWNER_ID=votre_user_id
 
-# Optionnel pour anti-phishing avancé
-GOOGLE_SAFE_BROWSING_KEY=votre_api_key
+# Pour tester rapidement (optionnel mais recommandé)
+GUILD_ID=id_de_votre_serveur_test
+
+# APIs externes (OPTIONNEL - laissez vide pour désactiver)
+
+# Google Safe Browsing (anti-phishing avancé)
+# https://developers.google.com/safe-browsing/v4/get-started
+GOOGLE_SAFE_BROWSING_KEY=
+
+# Sightengine (détection NSFW)
+# https://sightengine.com/
+SIGHTENGINE_API_USER=
+SIGHTENGINE_API_SECRET=
+
+# OpenAI (AI Moderator)
+# https://platform.openai.com/api-keys
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4o-mini
 ```
 
-4. **Déployer les commandes**
-```bash
-npm run deploy
+### 🔑 Configuration du bot Discord
+
+1. Allez sur [Discord Developer Portal](https://discord.com/developers/applications)
+2. Créez une nouvelle application
+3. Allez dans **Bot** → Cliquez sur **Reset Token** pour obtenir votre token
+4. **IMPORTANT** : Activez ces intents :
+   - ✅ **Presence Intent**
+   - ✅ **Server Members Intent**
+   - ✅ **Message Content Intent**
+5. Copiez l'**Application ID** (CLIENT_ID)
+6. Invitez le bot avec ce lien (remplacez `YOUR_CLIENT_ID`) :
+
+```
+https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=8&scope=bot%20applications.commands
 ```
 
-5. **Lancer le bot**
-```bash
-npm start
-```
-
-Pour le développement avec auto-reload :
-```bash
-npm run dev
-```
+---
 
 ## ⚙️ Configuration
 
+### Configuration initiale
+
+1. **Créez ces salons** (recommandé) :
+   - `#theoprotect-logs` → Logs de sécurité
+   - `#vérification` → Salon de captcha
+
+2. **Créez ces rôles** (recommandé) :
+   - `Non vérifié` → Assigné en attendant le captcha
+   - `Quarantaine` → Pour isoler les comptes suspects
+
+3. **Configurez le bot** avec `/config`
+
 ### Commandes de configuration
 
-#### Configuration générale
-```
-/config - Panel interactif de configuration
-```
-
-#### Anti-Spam
-```
-/antispam [niveau] [actif]
-Niveaux : low, medium, high, extreme
+```bash
+/config                              # Panel interactif complet
+/antispam [niveau] [actif]           # low/medium/high/extreme
+/antiraid [mode]                     # off/detection/protection/lockdown
+/lockdown activate [niveau] [raison] # SOFT/MEDIUM/HARD/RAID
+/backup create                       # Créer une sauvegarde
+/stats                               # Statistiques du serveur
 ```
 
-#### Anti-Raid
-```
-/antiraid [mode]
-Modes : off, detection, protection, lockdown
-```
-
-#### Smart Lockdown
-```
-/lockdown activate [niveau] [raison]
-/lockdown deactivate
-/lockdown status
-```
-
-#### Backups
-```
-/backup create - Créer une sauvegarde
-/backup list - Liste des backups
-/backup info [id] - Détails d'un backup
-```
-
-### Salons recommandés
-
-Créez ces salons pour un fonctionnement optimal :
-- **#theoprotect-logs** : Logs de sécurité
-- **#vérification** : Captcha pour nouveaux membres
-
-### Rôles recommandés
-- **Non vérifié** : Assigné en attendant le captcha
-- **Quarantaine** : Pour les comptes suspects
-
-## 🏗️ Architecture
-
-```
-theoprotect/
-├── src/
-│   ├── index.js              # Point d'entrée
-│   ├── deploy-commands.js    # Script de déploiement
-│   ├── commands/             # Commandes slash
-│   │   ├── config.js
-│   │   ├── antispam.js
-│   │   ├── antiraid.js
-│   │   ├── warn.js
-│   │   ├── warnings.js
-│   │   ├── clearwarns.js
-│   │   ├── reputation.js
-│   │   ├── backup.js
-│   │   ├── lockdown.js
-│   │   ├── voicemod.js
-│   │   └── stats.js
-│   ├── events/               # Event handlers
-│   │   ├── ready.js
-│   │   ├── messageCreate.js
-│   │   ├── guildMemberAdd.js
-│   │   ├── interactionCreate.js
-│   │   ├── channelDelete.js
-│   │   └── roleDelete.js
-│   ├── systems/              # Systèmes de protection
-│   │   ├── antiSpam.js
-│   │   ├── antiRaid.js
-│   │   ├── antiNuke.js
-│   │   ├── antiPhishing.js
-│   │   ├── captcha.js
-│   │   └── smartLockdown.js
-│   ├── database/             # Gestion BDD
-│   │   └── database.js
-│   └── config/               # Configuration
-│       └── config.js
-├── data/                     # Base de données SQLite
-├── package.json
-├── .env.example
-└── README.md
-```
+---
 
 ## 🎨 Comparaison avec RaidProtect
 
@@ -232,74 +243,93 @@ theoprotect/
 | Anti-raid | ✅ | ✅ |
 | Captcha | ✅ | ✅ |
 | Anti-Nuke | ❌ | ✅ |
-| Anti-Phishing en temps réel | ❌ | ✅ |
-| Système de réputation | ❌ | ✅ |
+| Anti-Phishing temps réel | ❌ | ✅ |
+| Détection NSFW | ❌ | ✅ |
+| AI Moderator | ❌ | ✅ |
+| Système réputation | ❌ | ✅ |
 | Backup automatique | ❌ | ✅ |
-| Smart Lockdown progressif | ❌ | ✅ |
-| Modération vocale avancée | ❌ | ✅ |
-| Base de données persistante | ❌ | ✅ |
-| Logs détaillés avec preuves | ❌ | ✅ |
+| Smart Lockdown | ❌ | ✅ |
+| Modération vocale | ❌ | ✅ |
+| Base de données | ❌ | ✅ |
+| Logs avec preuves | ❌ | ✅ |
 | Open source | ❌ | ✅ |
-| Auto-quarantine intelligente | ❌ | ✅ |
-| Détection de patterns ML | ❌ | ✅ |
+| Compatible Windows | ❓ | ✅ |
+| Détection ML/patterns | ❌ | ✅ |
+
+---
 
 ## 📊 Commandes complètes
 
 ### Configuration
 | Commande | Description | Permissions |
 |---|---|---|
-| `/config` | Panel de configuration | Administrateur |
+| `/config` | Panel de configuration interactif | Administrateur |
 | `/antispam [niveau] [actif]` | Configure l'anti-spam | Gérer le serveur |
 | `/antiraid [mode]` | Configure l'anti-raid | Gérer le serveur |
 
 ### Modération
 | Commande | Description | Permissions |
 |---|---|---|
-| `/warn [user] [reason]` | Avertir un membre | Modérer les membres |
-| `/warnings [user]` | Voir les warnings | Modérer les membres |
-| `/clearwarns [user]` | Effacer les warnings | Administrateur |
-| `/reputation [user]` | Voir la réputation | Tous |
+| `/warn [user] [reason]` | Avertir (auto-escalade) | Modérer |
+| `/warnings [user]` | Historique warnings | Modérer |
+| `/clearwarns [user]` | Effacer warnings | Admin |
+| `/reputation [user]` | Réputation d'un membre | Tous |
 
 ### Utilitaires
 | Commande | Description | Permissions |
 |---|---|---|
-| `/backup create` | Créer une sauvegarde | Administrateur |
-| `/backup list` | Lister les backups | Administrateur |
-| `/backup info [id]` | Détails d'un backup | Administrateur |
-| `/lockdown activate` | Activer le lockdown | Administrateur |
-| `/lockdown deactivate` | Désactiver le lockdown | Administrateur |
-| `/lockdown status` | Statut du lockdown | Administrateur |
-| `/stats` | Statistiques du serveur | Tous |
+| `/backup create` | Créer sauvegarde | Admin |
+| `/backup list` | Liste des backups | Admin |
+| `/backup info [id]` | Détails backup | Admin |
+| `/lockdown activate` | Verrouiller serveur | Admin |
+| `/lockdown deactivate` | Déverrouiller | Admin |
+| `/stats` | Statistiques | Tous |
 
 ### Modération vocale
 | Commande | Description | Permissions |
 |---|---|---|
-| `/voicemod muteall` | Mute tous les membres | Déplacer les membres |
-| `/voicemod unmuteall` | Unmute tous | Déplacer les membres |
-| `/voicemod disconnectall` | Déconnecter tous | Déplacer les membres |
-| `/voicemod moveall` | Déplacer en masse | Déplacer les membres |
+| `/voicemod muteall` | Mute tous | Déplacer |
+| `/voicemod unmuteall` | Unmute tous | Déplacer |
+| `/voicemod disconnectall` | Déconnecter tous | Déplacer |
+| `/voicemod moveall` | Déplacer en masse | Déplacer |
+
+---
+
+## 🐛 Dépannage
+
+### Le bot ne démarre pas
+
+1. Vérifiez que Node.js 18+ est installé : `node --version`
+2. Vérifiez que le token est correct dans `.env`
+3. Vérifiez que les intents sont activés dans le Dev Portal
+4. Vérifiez les logs : le bot affiche des erreurs explicites
+
+### Les commandes n'apparaissent pas
+
+1. Relancez : `npm run deploy`
+2. Si vous utilisez `GUILD_ID`, vérifiez qu'il est correct
+3. Si vous déployez globalement, attendez jusqu'à 1 heure
+4. Vérifiez que le bot a la permission `applications.commands`
+
+### Erreur "Cannot find module"
+
+1. Réinstallez les dépendances : `npm install`
+2. Supprimez `node_modules` et refaites `npm install`
+3. Vérifiez que vous lancez depuis la racine du projet
+
+### Base de données corr ompue
+
+1. Arrêtez le bot
+2. Supprimez `data/theoprotect.db`
+3. Redémarrez : une nouvelle BDD sera créée
+
+---
 
 ## 🤝 Contribution
 
-Les contributions sont les bienvenues ! Consultez [CONTRIBUTING.md](CONTRIBUTING.md) pour les guidelines.
+Les contributions sont les bienvenues ! Consultez [CONTRIBUTING.md](CONTRIBUTING.md).
 
-### Développement local
-```bash
-git clone https://github.com/theo7791l/theoprotect.git
-cd theoprotect
-npm install
-cp .env.example .env
-# Éditez .env
-npm run dev
-```
-
-## 🐛 Rapporter un bug
-
-Ouvrez une [issue](https://github.com/theo7791l/theoprotect/issues) avec :
-- Description du problème
-- Étapes pour reproduire
-- Logs pertinents
-- Version de Node.js et Discord.js
+---
 
 ## 📜 Licence
 
@@ -307,11 +337,13 @@ MIT © [theo7791l](https://github.com/theo7791l)
 
 Voir [LICENSE](LICENSE) pour plus de détails.
 
+---
+
 ## 🔗 Liens
 
 - [GitHub Repository](https://github.com/theo7791l/theoprotect)
-- [Documentation](https://github.com/theo7791l/theoprotect/wiki)
 - [Issues](https://github.com/theo7791l/theoprotect/issues)
+- [Releases](https://github.com/theo7791l/theoprotect/releases)
 
 ---
 
