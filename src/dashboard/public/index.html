@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TheoProtect Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: white;
+      border-radius: 15px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .header h1 {
+      color: #667eea;
+      font-size: 32px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: #10b981;
+      color: white;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: white;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      transition: transform 0.3s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .stat-icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+    }
+
+    .stat-label {
+      color: #6b7280;
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      font-size: 36px;
+      font-weight: 700;
+      color: #1f2937;
+    }
+
+    .logs-container {
+      background: white;
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      margin-bottom: 30px;
+    }
+
+    .logs-container h2 {
+      color: #1f2937;
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+
+    .log-item {
+      padding: 15px;
+      border-left: 4px solid #667eea;
+      background: #f9fafb;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      transition: all 0.3s;
+    }
+
+    .log-item:hover {
+      background: #f3f4f6;
+      transform: translateX(5px);
+    }
+
+    .log-time {
+      color: #6b7280;
+      font-size: 12px;
+      margin-bottom: 5px;
+    }
+
+    .log-type {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 10px;
+    }
+
+    .log-type.spam { background: #fef3c7; color: #92400e; }
+    .log-type.badword { background: #fee2e2; color: #991b1b; }
+    .log-type.flood { background: #dbeafe; color: #1e40af; }
+    .log-type.cleanup { background: #d1fae5; color: #065f46; }
+
+    .guilds-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .guild-card {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .guild-name {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 15px;
+    }
+
+    .guild-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .guild-stat {
+      background: #f9fafb;
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+    .guild-stat-label {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 5px;
+    }
+
+    .guild-stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 50px;
+      color: white;
+      font-size: 18px;
+    }
+
+    .error {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>
+        🛡️ TheoProtect Dashboard
+        <span class="status-badge">
+          <span class="status-dot"></span>
+          En ligne
+        </span>
+      </h1>
+      <p style="color: #6b7280; margin-top: 10px;">Surveillance et gestion en temps réel</p>
+    </div>
+
+    <div id="stats-section" class="stats-grid">
+      <!-- Stats will be injected here -->
+    </div>
+
+    <div class="logs-container">
+      <h2>📋 Dernières Actions</h2>
+      <div id="logs-list">
+        <div class="loading">Chargement des logs...</div>
+      </div>
+    </div>
+
+    <div id="guilds-section">
+      <h2 style="color: white; margin-bottom: 20px; font-size: 24px;">🌐 Serveurs Protégés</h2>
+      <div id="guilds-list" class="guilds-grid">
+        <!-- Guilds will be injected here -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let ws;
+
+    // Connect to WebSocket
+    function connectWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${protocol}//${window.location.host}`);
+
+      ws.onopen = () => {
+        console.log('✅ Connected to dashboard');
+      };
+
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        
+        if (message.type === 'initial') {
+          updateDashboard(message.data);
+        } else if (message.type === 'update') {
+          updateDashboard(message.data);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('❌ Disconnected from dashboard');
+        setTimeout(connectWebSocket, 3000);
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+    }
+
+    // Fetch initial data
+    async function fetchInitialData() {
+      try {
+        const response = await fetch('/api/stats');
+        const data = await response.json();
+        updateDashboard(data);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        document.getElementById('stats-section').innerHTML = 
+          '<div class="error">❌ Erreur de chargement des données</div>';
+      }
+    }
+
+    // Update dashboard
+    function updateDashboard(data) {
+      updateStats(data.stats);
+      updateLogs(data.recentLogs);
+      updateGuilds(data.guilds);
+    }
+
+    // Update stats
+    function updateStats(stats) {
+      const statsHTML = `
+        <div class="stat-card">
+          <div class="stat-icon">🚨</div>
+          <div class="stat-label">Messages modérés</div>
+          <div class="stat-value">${stats?.messages_moderated || 0}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🤬</div>
+          <div class="stat-label">Bad Words détectés</div>
+          <div class="stat-value">${stats?.bad_words_detected || 0}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💬</div>
+          <div class="stat-label">Flood détecté</div>
+          <div class="stat-value">${stats?.flood_detected || 0}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🔇</div>
+          <div class="stat-label">Utilisateurs mute</div>
+          <div class="stat-value">${stats?.users_muted || 0}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">👢</div>
+          <div class="stat-label">Kicks</div>
+          <div class="stat-value">${stats?.users_kicked || 0}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🔨</div>
+          <div class="stat-label">Bans</div>
+          <div class="stat-value">${stats?.users_banned || 0}</div>
+        </div>
+      `;
+      document.getElementById('stats-section').innerHTML = statsHTML;
+    }
+
+    // Update logs
+    function updateLogs(logs) {
+      if (!logs || logs.length === 0) {
+        document.getElementById('logs-list').innerHTML = 
+          '<div style="color: #6b7280; padding: 20px; text-align: center;">Aucun log disponible</div>';
+        return;
+      }
+
+      const logsHTML = logs.map(log => {
+        const date = new Date(log.timestamp);
+        const timeStr = date.toLocaleString('fr-FR');
+        const typeClass = log.type.replace('_', '');
+        const typeLabel = {
+          'single_message_flood': 'Flood',
+          'bad_word_detected': 'Bad Word',
+          'global_flood_detected': 'Flood Global',
+          'cleanup': 'Cleanup'
+        }[log.type] || log.type;
+
+        return `
+          <div class="log-item">
+            <div class="log-time">${timeStr}</div>
+            <div>
+              <span class="log-type ${typeClass}">${typeLabel}</span>
+              User ID: ${log.user_id || 'N/A'} | Guild: ${log.guild_id}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('logs-list').innerHTML = logsHTML;
+    }
+
+    // Update guilds
+    function updateGuilds(guilds) {
+      if (!guilds || guilds.length === 0) {
+        document.getElementById('guilds-list').innerHTML = 
+          '<div style="color: white; padding: 20px; text-align: center;">Aucun serveur</div>';
+        return;
+      }
+
+      const guildsHTML = guilds.map(guild => `
+        <div class="guild-card">
+          <div class="guild-name">${guild.name || `Serveur ${guild.guild_id}`}</div>
+          <div class="guild-stats">
+            <div class="guild-stat">
+              <div class="guild-stat-label">Anti-Spam</div>
+              <div class="guild-stat-value">${guild.antispam_enabled ? '✅' : '❌'}</div>
+            </div>
+            <div class="guild-stat">
+              <div class="guild-stat-label">Niveau</div>
+              <div class="guild-stat-value">${guild.antispam_level || 'medium'}</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      document.getElementById('guilds-list').innerHTML = guildsHTML;
+    }
+
+    // Initialize
+    fetchInitialData();
+    connectWebSocket();
+
+    // Refresh every 30 seconds
+    setInterval(fetchInitialData, 30000);
+  </script>
+</body>
+</html>
