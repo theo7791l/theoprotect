@@ -31,6 +31,8 @@ const client = new Client({
 });
 
 client.commands = new Collection();
+client.buttonHandlers = new Collection();
+client.selectHandlers = new Collection();
 
 // Load commands
 const commandsPath = join(__dirname, 'commands');
