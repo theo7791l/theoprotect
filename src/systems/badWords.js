@@ -1,98 +1,165 @@
 // Liste exhaustive de mots inappropriés en français et anglais
 class BadWordsFilter {
   constructor() {
-    // Insultes françaises
+    // Insultes françaises (mots entiers uniquement)
     this.frenchWords = [
       // Insultes classiques
-      'connard', 'connasse', 'salope', 'pute', 'putain', 'enculé', 'encule', 'enculer',
-      'putain', 'pd', 'pédé', 'pede', 'tapette', 'tafiole', 'enfoiré', 'enfoirer',
-      'batard', 'bâtard', 'conne', 'con', 'connes', 'cons', 'fdp', 'ntm', 'tg',
-      'ferme ta gueule', 'ta gueule', 'gueule', 'nique', 'niquer', 'niker',
-      'fils de pute', 'salaud', 'salop', 'salopard', 'saloperie', 'merde', 'chier',
-      'bite', 'couille', 'couilles', 'cul', 'chatte', 'con', 'conne',
+      'connard', 'connards', 'connarde', 'connardes', 'connasse', 'connasses',
+      'salope', 'salopes', 'salopard', 'salopards', 'saloperie', 'saloperies',
+      'pute', 'putes', 'putain', 'putains',
+      'enculé', 'enculée', 'enculés', 'enculées', 'encule', 'enculer',
+      'pd', 'pédé', 'pédés', 'pede', 'pedes', 'tapette', 'tapettes', 'tafiole', 'tafioles',
+      'enfoiré', 'enfoirés', 'enfoirée', 'enfoirées', 'enfoirer',
+      'batard', 'batards', 'batarde', 'batardes', 'bâtard', 'bâtards',
+      'fdp', 'ntm', 'tg', 'ftg', 'ntr',
+      'fils de pute', 'nique ta mère', 'nique ta race', 'ferme ta gueule', 'ta gueule',
+      'nique', 'niquer', 'niker',
+      'salaud', 'salauds', 'salop', 'salops',
+      'merde', 'merdes', 'chier', 'chieur', 'chieuse',
+      'bite', 'bites', 'couille', 'couilles', 'cul', 'culs', 'chatte', 'chattes',
       
       // Insultes racistes
-      'negro', 'négro', 'bamboula', 'bounty', 'bicot', 'bougnoule', 'crouille',
+      'negro', 'négro', 'nègre', 'bamboula', 'bounty', 'bicot', 'bougnoule', 'crouille',
       'sale noir', 'sale blanc', 'sale arabe', 'raton', 'youpin', 'feuj',
       'boche', 'schleu', 'chintok', 'niakoué', 'bridé',
       
       // Insultes homophobes
-      'fiotte', 'gouine', 'tantouze', 'tarlouze', 'tafiole',
+      'fiotte', 'fiottes', 'gouine', 'gouines', 'tantouze', 'tantouzes', 'tarlouze', 'tarlouzes',
       
       // Vulgarités
-      'pisse', 'pisser', 'chiottes', 'merdique', 'merdeux',
-      'débile', 'abruti', 'idiot', 'imbécile', 'crétin',
-      
-      // Variations et dérivés
-      'connard', 'connards', 'connarde', 'connardes',
-      'salope', 'salopes', 'salopard', 'salopards',
-      'batard', 'batarde', 'batards', 'bâtards',
-      'enculé', 'enculée', 'enculés', 'enculées',
+      'pisse', 'pisser', 'chiottes', 'merdique', 'merdeux', 'merdeuse',
+      'débile', 'débiles', 'abruti', 'abrutis', 'abrutie', 'idiot', 'idiots', 'idiote',
+      'imbécile', 'imbéciles', 'crétin', 'crétins', 'crétine',
       
       // Expressions
       'va te faire', 'vas te faire', 'va chier', 'vas chier',
-      'nique ta mère', 'ntm', 'nique ta race', 'ntr',
-      'ferme ta gueule', 'ftg', 'ta gueule', 'tg',
-      'fils de pute', 'fdp', 'face de merde',
+      'va te faire foutre', 'vas te faire foutre',
+      'face de merde',
       
-      // Variations orthographiques (leet speak, variations)
-      'c0n', 'c0nn4rd', 'p0ut3', 'put3', 'b4t4rd',
-      'c0nn4ss3', 's4l0p3', '3ncul3', 'p3d3'
+      // Variations leet speak
+      'c0nnard', 'c0nn4rd', 'p0ute', 'put3', 'b4tard',
+      'c0nnasse', 's4lope', '3ncule', 'p3de'
     ];
     
-    // Insultes anglaises
+    // Insultes anglaises (mots entiers uniquement)
     this.englishWords = [
       // Insultes classiques
-      'fuck', 'fucking', 'fucker', 'fucked', 'fck', 'fuk', 'fking',
-      'shit', 'shit', 'bullshit', 'bitch', 'bitches', 'bastard',
-      'asshole', 'ass', 'arse', 'dick', 'cock', 'pussy', 'cunt',
-      'whore', 'slut', 'motherfucker', 'mofo', 'damn', 'dammit',
+      'fuck', 'fucking', 'fucker', 'fuckers', 'fucked', 'fck', 'fuk', 'fking',
+      'shit', 'shits', 'bullshit', 'bitch', 'bitches', 'bastard', 'bastards',
+      'asshole', 'assholes', 'ass', 'arse', 'dick', 'dicks', 'cock', 'cocks', 'pussy', 'cunt', 'cunts',
+      'whore', 'whores', 'slut', 'sluts', 'motherfucker', 'motherfuckers', 'mofo', 'damn', 'dammit',
       
       // Insultes racistes
-      'nigger', 'nigga', 'negro', 'coon', 'chink', 'gook',
-      'wetback', 'spic', 'kike', 'jap', 'raghead', 'towelhead',
-      'sand nigger', 'paki', 'beaner',
+      'nigger', 'niggers', 'nigga', 'niggas', 'negro', 'negroes', 'coon', 'coons',
+      'chink', 'chinks', 'gook', 'gooks', 'wetback', 'wetbacks', 'spic', 'spics',
+      'kike', 'kikes', 'jap', 'japs', 'raghead', 'ragheads', 'towelhead', 'towelheads',
+      'sand nigger', 'paki', 'pakis', 'beaner', 'beaners',
       
       // Insultes homophobes
-      'faggot', 'fag', 'fags', 'dyke', 'queer', 'tranny',
+      'faggot', 'faggots', 'fag', 'fags', 'dyke', 'dykes', 'queer', 'queers', 'tranny',
       
       // Vulgarités
-      'piss', 'pissed', 'crap', 'retard', 'retarded',
-      'idiot', 'stupid', 'dumb', 'moron', 'imbecile',
-      
-      // Variations et dérivés
-      'fucker', 'fuckers', 'fuckin', 'fucked up',
-      'shitty', 'shithead', 'dipshit', 'bullshitter',
-      'bitch ass', 'son of a bitch', 'sob',
+      'piss', 'pissed', 'crap', 'crappy', 'retard', 'retarded', 'retards',
       
       // Expressions
       'fuck you', 'fuck off', 'shut up', 'stfu', 'gtfo',
       'go to hell', 'kys', 'kill yourself', 'kill your self',
-      'suck my', 'suck a',
+      'suck my', 'suck a', 'son of a bitch',
       
       // Variations orthographiques
-      'fuk', 'fck', 'f*ck', 'f**k', 'sh1t', 'b1tch',
+      'fuk', 'f*ck', 'f**k', 'sh1t', 'b1tch',
       'a$$', '@ss', 'a$$hole', 'd1ck', 'c0ck', 'pu$$y'
     ];
     
-    // Patterns regex pour détecter les variations
+    // Patterns regex pour détecter les variations (plus strictes)
     this.patterns = [
-      /n+[i1!]+[gq]+[e3]+r+/gi,  // nigger et variations
-      /f+[u*@]+[c*]+k+/gi,        // fuck et variations
-      /b+[i1!]+t+[c*]+h+/gi,      // bitch et variations
-      /[s5]+[h]+[i1!]+t+/gi,      // shit et variations
-      /c+[o0]+n+[n]+[a@4]+r+d+/gi, // connard et variations
-      /[s5]+[a@4]+l+[o0]+p+[e3]+/gi, // salope et variations
-      /p+[u*]+t+[e3a@4]+/gi,      // pute et variations
-      /[e3]+n+c+[u*]+l+[e3]+/gi   // enculé et variations
+      /\bn+[i1!]+[gq]+[e3]+r+s?\b/gi,  // nigger et variations (mot entier)
+      /\bf+[u*@]+[c*]+k+[si]*(ng|er|ed)?\b/gi, // fuck et variations (mot entier)
+      /\bb+[i1!]+t+[c*]+h+[es]*\b/gi,  // bitch et variations (mot entier)
+      /\b[s5]+[h]+[i1!]+t+[sy]?\b/gi,  // shit et variations (mot entier)
+      /\bp+[u*]+t+[e3a@4]+s?\b/gi      // pute et variations (mot entier)
     ];
     
-    // Mots à ignorer (faux positifs)
+    // Mots à ignorer (faux positifs) - TRÈS IMPORTANT
     this.whitelist = [
-      'assassin', 'assembly', 'bass', 'class', 'pass', 'glass',
-      'grass', 'mass', 'assignment', 'classic', 'passion',
-      'dick tracy', 'moby dick', // noms propres
-      'scunthorpe', 'penistone' // villes
+      // Mots français avec "con"
+      'acon', 'acon', 'acon', 'balcon', 'balcons', 'bacon', 'bacons',
+      'acon', 'acon', 'contenu', 'contenus', 'container', 'containers',
+      'contrat', 'contrats', 'contracter', 'contractuel',
+      'contre', 'contrer', 'controler', 'controle', 'contrôle', 'contrôler',
+      'contour', 'contours', 'contourner',
+      'contribuer', 'contribution', 'contributions', 'contributeur',
+      'controverse', 'controversé', 'controversée',
+      'contravention', 'contraventions',
+      'contact', 'contacts', 'contacter',
+      'contexte', 'contextes', 'contextuel',
+      'continent', 'continents', 'continental',
+      'continuer', 'continuation', 'continu', 'continue',
+      'concours', 'concourir',
+      'conclusion', 'conclusions', 'conclure',
+      'concret', 'concrète', 'concrétiser',
+      'condition', 'conditions', 'conditionner',
+      'conduire', 'conduite', 'conducteur',
+      'confiance', 'confiant', 'confiante',
+      'confirmer', 'confirmation',
+      'conflit', 'conflits',
+      'confort', 'confortable',
+      'confusion', 'confus', 'confuse',
+      'congé', 'congés',
+      'connaître', 'connaissance', 'connaissances', 'connaissant',
+      'connexion', 'connexions', 'connecter', 'connecté',
+      'conquête', 'conquérir',
+      'conscience', 'conscient', 'consciente',
+      'conseil', 'conseils', 'conseiller',
+      'consensus',
+      'conséquence', 'conséquences', 'conséquent',
+      'conservation', 'conserver', 'conservateur',
+      'considérer', 'considération', 'considérable',
+      'consigne', 'consignes',
+      'consistant', 'consister', 'consistence',
+      'consolider', 'consolidation', 'console',
+      'consommateur', 'consommation', 'consommer',
+      'conspiration', 'conspirer',
+      'constater', 'constat', 'constatation',
+      'constellation', 'constellations',
+      'constitution', 'constituer', 'constitutionnel',
+      'construction', 'construire', 'constructeur',
+      'consulter', 'consultation', 'consultant', 'consulat',
+      'consumer', 'consommé',
+      'contact', 'contacter',
+      'contagieux', 'contagion',
+      'contaminer', 'contamination',
+      'contempler', 'contemplation',
+      'contemporain', 'contemporaine',
+      'content', 'contente', 'contenter',
+      'contest', 'contester', 'contestation',
+      
+      // Mots anglais
+      'assassin', 'assassinate', 'assembly', 'bass', 'bassist',
+      'class', 'classes', 'classic', 'classical', 'classroom',
+      'pass', 'passed', 'passing', 'passenger', 'passport',
+      'glass', 'glasses', 'glassware',
+      'grass', 'grassland',
+      'mass', 'massive', 'masses',
+      'assignment', 'assign', 'assigned',
+      'passion', 'passionate',
+      'compassion', 'compassionate',
+      'discussion', 'discuss',
+      'concussion',
+      'assessment', 'assess',
+      'assistance', 'assistant', 'assist',
+      'dick tracy', 'moby dick', 'dickens',
+      'scunthorpe', 'penistone',
+      'update', 'updates', 'updated', 'updating',
+      'contain', 'contains', 'container', 'content',
+      'contract', 'contracts', 'contractor',
+      'control', 'controls', 'controller', 'controlling',
+      'contribute', 'contribution', 'contributor',
+      'continue', 'continues', 'continued', 'continuous',
+      'contact', 'contacts', 'contacted',
+      'context', 'contextual',
+      'contest', 'contests', 'contestant',
+      'connect', 'connection', 'connected', 'connecting'
     ];
   }
   
@@ -102,8 +169,8 @@ class BadWordsFilter {
   normalizeText(text) {
     return text
       .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '') // Retire ponctuation
-      .replace(/\s+/g, ' ')        // Normalise espaces
+      .replace(/[^a-zàâäéèêëïîôùûüÿæœç0-9\s]/g, '') // Garde accents français
+      .replace(/\s+/g, ' ')
       .trim();
   }
   
@@ -112,18 +179,31 @@ class BadWordsFilter {
    */
   containsBadWords(message) {
     const normalized = this.normalizeText(message);
-    const words = normalized.split(' ');
     
-    // Vérifier whitelist
+    // Vérifier whitelist d'abord (PRIORITAIRE)
     for (const whitelisted of this.whitelist) {
-      if (normalized.includes(whitelisted)) {
+      if (normalized.includes(whitelisted.toLowerCase())) {
         return { detected: false };
       }
     }
     
-    // Vérifier mots français
+    // Séparer en mots individuels
+    const words = normalized.split(' ');
+    
+    // Vérifier mots français (correspondance EXACTE)
     for (const badWord of this.frenchWords) {
-      if (normalized.includes(badWord) || words.includes(badWord)) {
+      // Vérifier mot exact dans la liste de mots
+      if (words.includes(badWord)) {
+        return {
+          detected: true,
+          word: badWord,
+          language: 'fr',
+          severity: this.getSeverity(badWord)
+        };
+      }
+      
+      // Vérifier expressions (plusieurs mots)
+      if (badWord.includes(' ') && normalized.includes(badWord)) {
         return {
           detected: true,
           word: badWord,
@@ -133,9 +213,20 @@ class BadWordsFilter {
       }
     }
     
-    // Vérifier mots anglais
+    // Vérifier mots anglais (correspondance EXACTE)
     for (const badWord of this.englishWords) {
-      if (normalized.includes(badWord) || words.includes(badWord)) {
+      // Vérifier mot exact
+      if (words.includes(badWord)) {
+        return {
+          detected: true,
+          word: badWord,
+          language: 'en',
+          severity: this.getSeverity(badWord)
+        };
+      }
+      
+      // Vérifier expressions
+      if (badWord.includes(' ') && normalized.includes(badWord)) {
         return {
           detected: true,
           word: badWord,
@@ -145,16 +236,29 @@ class BadWordsFilter {
       }
     }
     
-    // Vérifier patterns regex
+    // Vérifier patterns regex (dernier recours)
     for (const pattern of this.patterns) {
       const match = message.match(pattern);
       if (match) {
-        return {
-          detected: true,
-          word: match[0],
-          language: 'pattern',
-          severity: 'high'
-        };
+        // Double-check contre whitelist
+        const matchedWord = match[0].toLowerCase();
+        let isWhitelisted = false;
+        
+        for (const whitelisted of this.whitelist) {
+          if (matchedWord.includes(whitelisted.toLowerCase()) || whitelisted.toLowerCase().includes(matchedWord)) {
+            isWhitelisted = true;
+            break;
+          }
+        }
+        
+        if (!isWhitelisted) {
+          return {
+            detected: true,
+            word: match[0],
+            language: 'pattern',
+            severity: 'high'
+          };
+        }
       }
     }
     

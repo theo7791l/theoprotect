@@ -9,8 +9,9 @@ class AutoModeration {
 
   start() {
     console.log('✅ [Auto-Moderation] System started');
-    console.log('✅ [Bad Words Filter] Active with 200+ words');
-    console.log('✅ [API Spam Detection] Active (10 msg/5s threshold)');
+    console.log('✅ [Bad Words Filter] 200+ words (exact match only)');
+    console.log('✅ [Global Flood Detection] 12+ msg/5s threshold (ALL sources)');
+    console.log('✅ [User Spam Detection] Level-based thresholds');
     
     // Nettoyer les caches toutes les minutes
     this.cleanupInterval = setInterval(() => {

@@ -5,11 +5,14 @@ class AutoAntiSpam {
   constructor() {
     this.messageCache = new Map(); // userId-guildId -> [messages]
     this.warningsCache = new Map(); // userId-guildId -> count
-    this.apiSpamCache = new Map(); // userId-guildId -> {count, lastReset}
+    this.globalMessageCache = new Map(); // guildId-channelId -> [all messages]
   }
 
   async checkMessage(message) {
-    if (!message.guild || message.author.bot) return;
+    if (!message.guild) return;
+    
+    // Ignorer les bots marqués comme bots (sauf webhooks)
+    if (message.author.bot && !message.webhookId) return;
     
     const settings = db.getGuildSettings(message.guild.id);
     if (!settings.antispam_enabled) return;
@@ -17,18 +20,22 @@ class AutoAntiSpam {
     const key = `${message.author.id}-${message.guild.id}`;
     const now = Date.now();
     
-    // 1. Vérifier les mots inappropriés
-    const badWordCheck = badWords.containsBadWords(message.content);
-    if (badWordCheck.detected) {
-      await this.handleBadWord(message, badWordCheck);
-      return;
+    // 1. Vérifier les mots inappropriés (seulement pour messages humains)
+    if (!message.author.bot && !message.webhookId) {
+      const badWordCheck = badWords.containsBadWords(message.content);
+      if (badWordCheck.detected) {
+        await this.handleBadWord(message, badWordCheck);
+        return;
+      }
     }
     
-    // 2. Vérifier spam API (quota de messages)
-    await this.checkAPISpam(message, key, now);
+    // 2. Vérifier flood global (TOUS les messages, incluant webhooks/bots)
+    await this.checkGlobalFlood(message, now);
     
-    // 3. Vérifier spam classique
-    await this.checkRegularSpam(message, key, now, settings);
+    // 3. Vérifier spam classique (seulement utilisateurs)
+    if (!message.author.bot && !message.webhookId) {
+      await this.checkRegularSpam(message, key, now, settings);
+    }
   }
 
   async handleBadWord(message, detection) {
@@ -108,70 +115,112 @@ class AutoAntiSpam {
     }
   }
 
-  async checkAPISpam(message, key, now) {
-    // Détecter spam d'API (webhooks, bots non marqués, etc.)
-    if (!this.apiSpamCache.has(key)) {
-      this.apiSpamCache.set(key, { count: 0, lastReset: now, messages: [] });
+  async checkGlobalFlood(message, now) {
+    // Détection de flood GLOBAL (tous messages confondus)
+    const channelKey = `${message.guild.id}-${message.channel.id}`;
+    
+    if (!this.globalMessageCache.has(channelKey)) {
+      this.globalMessageCache.set(channelKey, []);
     }
     
-    const apiData = this.apiSpamCache.get(key);
+    const channelMessages = this.globalMessageCache.get(channelKey);
+    channelMessages.push({ 
+      id: message.id, 
+      authorId: message.author.id,
+      timestamp: now,
+      isBot: message.author.bot || !!message.webhookId
+    });
     
-    // Reset toutes les 5 secondes
-    if (now - apiData.lastReset > 5000) {
-      apiData.count = 0;
-      apiData.messages = [];
-      apiData.lastReset = now;
-    }
+    // Garder seulement les 20 derniers messages des 5 dernières secondes
+    const recentMessages = channelMessages.filter(m => now - m.timestamp < 5000).slice(-20);
+    this.globalMessageCache.set(channelKey, recentMessages);
     
-    apiData.count++;
-    apiData.messages.push(message.id);
-    
-    // Quota: 10 messages en 5 secondes = API spam
-    if (apiData.count >= 10) {
-      console.log(`[API Spam] Detected from ${message.author.tag} (${apiData.count} messages in 5s)`);
+    // Seuil: 12+ messages en 5 secondes dans le salon = FLOOD
+    if (recentMessages.length >= 12) {
+      console.log(`[Global Flood] Detected in ${message.channel.name} (${recentMessages.length} messages in 5s)`);
       
-      // Supprimer tous les messages de ce spam
-      for (const msgId of apiData.messages) {
-        try {
-          const msg = await message.channel.messages.fetch(msgId).catch(() => null);
-          if (msg) await msg.delete().catch(console.error);
-        } catch (e) {}
-      }
+      // Supprimer TOUS les messages du flood
+      const deletedCount = await this.bulkDeleteMessages(message.channel, recentMessages.map(m => m.id));
       
-      // Réduire réputation
-      db.updateReputation(message.guild.id, message.author.id, -20);
-      
-      // Timeout si membre
-      if (message.member && !message.author.bot) {
-        await message.member.timeout(30 * 60 * 1000, '[Auto-Mod] API Spam détecté').catch(console.error);
-        console.log(`[API Spam] Muted ${message.author.tag} for 30 minutes`);
-      }
+      console.log(`[Global Flood] Deleted ${deletedCount} messages`);
       
       // Notification
       await message.channel.send({
         embeds: [{
           color: 0xff0000,
-          title: '🚨 Spam API détecté',
-          description: `**${apiData.count} messages** supprimés de ${message.author}\n\n${message.author.bot ? '⚠️ Bot détecté - messages nettoyés' : '🔇 Utilisateur mute 30 minutes'}`,
-          timestamp: new Date().toISOString()
+          title: '🚨 Flood détecté',
+          description: `**${deletedCount} messages** supprimés pour flood dans ce salon.\n\n⚠️ Ralentissez le débit de messages !`,
+          timestamp: new Date().toISOString(),
+          footer: { text: 'TheoProtect Auto-Moderation' }
         }]
       }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 10000));
       
-      // Reset
-      this.apiSpamCache.delete(key);
+      // Timeout les utilisateurs humains impliqués
+      const humanAuthors = new Set(
+        recentMessages
+          .filter(m => !m.isBot)
+          .map(m => m.authorId)
+      );
+      
+      for (const authorId of humanAuthors) {
+        try {
+          const member = await message.guild.members.fetch(authorId).catch(() => null);
+          if (member && !member.permissions.has('Administrator')) {
+            await member.timeout(5 * 60 * 1000, '[Auto-Mod] Participation à un flood').catch(console.error);
+            db.updateReputation(message.guild.id, authorId, -15);
+            console.log(`[Global Flood] Muted ${member.user.tag}`);
+          }
+        } catch (e) {}
+      }
+      
+      // Reset cache
+      this.globalMessageCache.delete(channelKey);
       
       // Log
       db.logAction(message.guild.id, {
-        type: 'api_spam_detected',
-        user_id: message.author.id,
-        messages_count: apiData.count,
+        type: 'global_flood_detected',
+        channel_id: message.channel.id,
+        messages_count: deletedCount,
         timestamp: now
       });
     }
   }
 
+  async bulkDeleteMessages(channel, messageIds) {
+    let deletedCount = 0;
+    
+    // Diviser en chunks de 100 (limite Discord)
+    const chunks = [];
+    for (let i = 0; i < messageIds.length; i += 100) {
+      chunks.push(messageIds.slice(i, i + 100));
+    }
+    
+    for (const chunk of chunks) {
+      try {
+        // Messages de moins de 14 jours peuvent être bulk delete
+        const messages = await channel.messages.fetch({ limit: 100 }).catch(() => new Map());
+        const toDelete = chunk.filter(id => messages.has(id));
+        
+        if (toDelete.length > 1) {
+          await channel.bulkDelete(toDelete, true).catch(console.error);
+          deletedCount += toDelete.length;
+        } else if (toDelete.length === 1) {
+          const msg = messages.get(toDelete[0]);
+          if (msg) {
+            await msg.delete().catch(console.error);
+            deletedCount++;
+          }
+        }
+      } catch (error) {
+        console.error('[Bulk Delete] Error:', error);
+      }
+    }
+    
+    return deletedCount;
+  }
+
   async checkRegularSpam(message, key, now, settings) {
-    // Spam classique (flood, duplicatas, etc.)
+    // Spam classique (utilisateurs uniquement)
     if (!this.messageCache.has(key)) {
       this.messageCache.set(key, []);
     }
@@ -236,10 +285,13 @@ class AutoAntiSpam {
       }
     }
     
-    // Clear API spam cache
-    for (const [key, data] of this.apiSpamCache.entries()) {
-      if (now - data.lastReset > 60000) {
-        this.apiSpamCache.delete(key);
+    // Clear global cache
+    for (const [key, messages] of this.globalMessageCache.entries()) {
+      const recent = messages.filter(m => now - m.timestamp < 60000);
+      if (recent.length === 0) {
+        this.globalMessageCache.delete(key);
+      } else {
+        this.globalMessageCache.set(key, recent);
       }
     }
   }

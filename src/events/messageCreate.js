@@ -7,15 +7,15 @@ export default {
     // Ignorer les messages DM
     if (!message.guild) return;
     
-    // Ignorer les bots (sauf pour la détection API spam)
-    if (message.author.bot && !message.webhookId) return;
+    // Ne PAS ignorer les bots pour la détection de flood global
+    // Les webhooks et bots sont maintenant traités par autoAntiSpam
     
     try {
-      // Auto anti-spam check (inclut bad words)
+      // Auto anti-spam check (inclut bad words + flood detection)
       await autoAntiSpam.checkMessage(message);
       
-      // Incrémenter réputation pour activité normale (1 point toutes les 10 minutes max)
-      if (!message.author.bot) {
+      // Incrémenter réputation UNIQUEMENT pour les humains
+      if (!message.author.bot && !message.webhookId) {
         const lastIncrement = db.getLastReputationIncrement(message.guild.id, message.author.id);
         const now = Date.now();
         
