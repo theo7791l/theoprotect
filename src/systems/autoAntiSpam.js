@@ -8,6 +8,7 @@ class AutoAntiSpam {
     this.globalMessageCache = new Map(); // guildId-channelId -> [all messages]
     this.floodSanctions = new Map(); // userId-guildId -> sanction count
     this.botSpamCache = new Map(); // Track bot spam per bot per channel
+    this.cleanupInProgress = new Set(); // Track channels being cleaned
   }
 
   async checkMessage(message) {
@@ -30,7 +31,7 @@ class AutoAntiSpam {
     }
     
     // 2. Vérifier message long/spam en un seul message (TOUS)
-    // Pour les BOTS: suppression SILENCIEUSE + log immédiat
+    // Pour les BOTS: suppression SILENCIEUSE + log immédiat + cleanup du salon
     if (await this.checkSingleMessageFlood(message, isBot)) {
       return; // Message géré
     }
@@ -65,7 +66,7 @@ class AutoAntiSpam {
         // Supprimer le message IMMÉDIATEMENT
         await message.delete().catch(console.error);
         
-        // Pour les BOTS: Log immédiat dans le salon de logs, PAS de notification publique
+        // Pour les BOTS: Log immédiat + CLEANUP du salon
         if (isBot) {
           // Track bot spam
           const botKey = `${message.author.id}-${message.channel.id}`;
@@ -91,8 +92,12 @@ class AutoAntiSpam {
               { name: 'Aperçu du contenu', value: content.substring(0, 500) + (content.length > 500 ? '...' : '') }
             ]
           });
+          
+          // CLEANUP IMMÉDIAT: Scanner tout le salon pour d'autres messages de spam
+          await this.cleanupChannelFlood(message.channel, message.author.id);
         } else {
           // Pour les HUMAINS: Sanctions + notification publique
+          const key = `${message.author.id}-${message.guild.id}`;
           const sanctions = (this.floodSanctions.get(key) || 0) + 1;
           this.floodSanctions.set(key, sanctions);
           
@@ -161,6 +166,106 @@ class AutoAntiSpam {
     }
     
     return false;
+  }
+
+  /**
+   * NOUVEAU: Scanner et nettoyer TOUT le salon après détection d'un spam de bot
+   * Vérifie les messages des 5 dernières minutes et supprime ceux qui matchent les critères de flood
+   */
+  async cleanupChannelFlood(channel, botUserId) {
+    const channelKey = `${channel.id}`;
+    
+    // Éviter les cleanups multiples simultanés dans le même salon
+    if (this.cleanupInProgress.has(channelKey)) {
+      console.log(`[Cleanup] Already in progress for ${channel.name}, skipping`);
+      return;
+    }
+    
+    this.cleanupInProgress.add(channelKey);
+    console.log(`[Cleanup] Scanning ${channel.name} for remaining flood messages from bot ${botUserId}`);
+    
+    try {
+      // Récupérer les 100 derniers messages (limite Discord)
+      const messages = await channel.messages.fetch({ limit: 100 }).catch(() => new Map());
+      
+      if (messages.size === 0) {
+        console.log(`[Cleanup] No messages found in ${channel.name}`);
+        this.cleanupInProgress.delete(channelKey);
+        return;
+      }
+      
+      const now = Date.now();
+      const fiveMinutesAgo = now - (5 * 60 * 1000);
+      const toDelete = [];
+      
+      // Filtrer les messages récents (< 5 minutes) de ce bot
+      for (const [id, msg] of messages) {
+        // Ignorer les messages de plus de 5 minutes
+        if (msg.createdTimestamp < fiveMinutesAgo) continue;
+        
+        // Ignorer les messages humains
+        if (!msg.author.bot && !msg.webhookId) continue;
+        
+        // Vérifier si c'est un message de flood (mêmes critères)
+        const content = msg.content;
+        const isFlood = (
+          content.length > 2000 ||
+          content.split('\n').length > 20 ||
+          /([A-Z]{50,})|([a-z]{100,})|([0-9]{50,})/.test(content) ||
+          /(.)\1{30,}/.test(content) ||
+          content.match(/[^\w\s]{20,}/g)
+        );
+        
+        if (isFlood) {
+          toDelete.push(msg);
+        }
+      }
+      
+      if (toDelete.length > 0) {
+        console.log(`[Cleanup] Found ${toDelete.length} flood message(s) to delete in ${channel.name}`);
+        
+        // Supprimer tous les messages détectés
+        let deletedCount = 0;
+        for (const msg of toDelete) {
+          try {
+            await msg.delete().catch(console.error);
+            deletedCount++;
+            
+            // Log chaque suppression
+            const botKey = `${msg.author.id}-${channel.id}`;
+            const spamCount = (this.botSpamCache.get(botKey) || 0) + 1;
+            this.botSpamCache.set(botKey, spamCount);
+          } catch (e) {
+            console.error(`[Cleanup] Failed to delete message ${msg.id}:`, e);
+          }
+        }
+        
+        console.log(`[Cleanup] Deleted ${deletedCount}/${toDelete.length} flood messages`);
+        
+        // Log global du cleanup
+        if (deletedCount > 0) {
+          await this.logToChannel(channel.guild, {
+            color: 0xff9900,
+            title: '🧹 Nettoyage automatique effectué',
+            description: 
+              `**Salon:** ${channel}\n` +
+              `**Messages supprimés:** ${deletedCount}\n` +
+              `**Type:** Messages de spam/flood détectés\n` +
+              `**Période:** 5 dernières minutes\n\n` +
+              `💡 Le salon a été automatiquement nettoyé après détection de flood.`
+          });
+        }
+      } else {
+        console.log(`[Cleanup] No flood messages found in ${channel.name}`);
+      }
+    } catch (error) {
+      console.error('[Cleanup] Error:', error);
+    } finally {
+      // Libérer le verrou après un délai pour éviter les scans trop fréquents
+      setTimeout(() => {
+        this.cleanupInProgress.delete(channelKey);
+      }, 3000);
+    }
   }
 
   async handleBadWord(message, detection) {
