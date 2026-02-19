@@ -1,3 +1,6 @@
+import pkg from 'discord.js';
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = pkg;
+
 export default {
   name: 'interactionCreate',
   async execute(interaction, client) {
@@ -32,7 +35,6 @@ export default {
         if (handlers && handlers.has(interaction.customId)) {
           await handlers.get(interaction.customId)(interaction);
         } else {
-          // Fallback for inline handlers
           await handleButtonInteraction(interaction, client);
         }
       } catch (error) {
@@ -55,7 +57,6 @@ export default {
         if (handlers && handlers.has(interaction.customId)) {
           await handlers.get(interaction.customId)(interaction);
         } else {
-          // Fallback for inline handlers
           await handleSelectMenuInteraction(interaction, client);
         }
       } catch (error) {
@@ -93,7 +94,6 @@ export default {
 async function handleButtonInteraction(interaction, client) {
   const customId = interaction.customId;
 
-  // Config module buttons
   if (customId === 'config_stats') {
     const statsCommand = client.commands.get('stats');
     if (statsCommand) {
@@ -113,13 +113,11 @@ async function handleButtonInteraction(interaction, client) {
 
 // Select menu interaction handlers
 async function handleSelectMenuInteraction(interaction, client) {
-  const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
   const db = (await import('../database/database.js')).default;
   
   const customId = interaction.customId;
   const selectedValue = interaction.values[0];
 
-  // Config module select menu
   if (customId === 'config_module') {
     await interaction.deferUpdate();
 

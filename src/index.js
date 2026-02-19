@@ -1,4 +1,5 @@
-import { Client, GatewayIntentBits, Collection, Partials } from 'discord.js';
+import pkg from 'discord.js';
+const { Client, GatewayIntentBits, Collection, Partials } = pkg;
 import { readdirSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
