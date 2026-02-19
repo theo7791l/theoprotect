@@ -1,7 +1,9 @@
 import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
+import { platform } from 'os';
+import { resolve } from 'path';
 import axios from 'axios';
 
 const execAsync = promisify(exec);
@@ -19,7 +21,12 @@ export default {
     .addSubcommand(subcommand =>
       subcommand
         .setName('install')
-        .setDescription('Installer la dernière version (REDÉMARRE LE BOT)')
+        .setDescription('Installer la dernière version automatiquement')
+    )
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('script')
+        .setDescription('Télécharger le script de mise à jour manuel')
     )
     .addSubcommand(subcommand =>
       subcommand
@@ -40,7 +47,8 @@ export default {
         .addFields(
           { name: 'Version actuelle', value: `v${currentVersion}`, inline: true },
           { name: 'Discord.js', value: packageJson.dependencies['discord.js'], inline: true },
-          { name: 'Node.js', value: process.version, inline: true }
+          { name: 'Node.js', value: process.version, inline: true },
+          { name: 'Plateforme', value: platform(), inline: true }
         )
         .setFooter({ text: 'TheoProtect - Protection avancée' })
         .setTimestamp();
@@ -51,11 +59,9 @@ export default {
       await interaction.deferReply({ ephemeral: true });
 
       try {
-        // Get current version
         const packageJson = JSON.parse(readFileSync('./package.json', 'utf-8'));
         const currentVersion = packageJson.version;
 
-        // Fetch latest release from GitHub
         const response = await axios.get(
           'https://api.github.com/repos/theo7791l/theoprotect/releases/latest',
           { timeout: 10000 }
@@ -74,16 +80,28 @@ export default {
             { name: 'Version actuelle', value: `v${currentVersion}`, inline: true },
             { name: 'Dernière version', value: `v${latestVersion}`, inline: true },
             { name: 'Publiée le', value: `<t:${Math.floor(publishedAt.getTime() / 1000)}:R>`, inline: true }
-          )
-          .setFooter({ text: 'Utilisez /update install pour mettre à jour' })
-          .setTimestamp();
+          );
 
         if (!isUpToDate) {
           embed.addFields({
             name: '📝 Notes de version',
-            value: releaseNotes.substring(0, 1024) // Discord limit
+            value: releaseNotes.substring(0, 1024)
+          });
+          embed.addFields({
+            name: '🔄 Pour mettre à jour',
+            value: 
+              `**Option 1 (Automatique):**\n` +
+              `\`/update install\` (nécessite Git)\n\n` +
+              `**Option 2 (Script manuel):**\n` +
+              `\`/update script\` puis exécutez le script\n\n` +
+              `**Option 3 (Manuel):**\n` +
+              `\`\`\`\ngit pull origin main\nnpm install\nnpm run deploy\n\`\`\``,
+            inline: false
           });
         }
+
+        embed.setFooter({ text: 'TheoProtect Auto-Update' })
+          .setTimestamp();
 
         await interaction.editReply({ embeds: [embed] });
       } catch (error) {
@@ -102,6 +120,39 @@ export default {
         await interaction.editReply({ embeds: [errorEmbed] });
       }
     }
+    else if (subcommand === 'script') {
+      const isWindows = platform() === 'win32';
+      const scriptName = isWindows ? 'update.bat' : 'update.sh';
+      const scriptPath = resolve(`./scripts/${scriptName}`);
+
+      if (!existsSync(scriptPath)) {
+        return interaction.reply({
+          content: `❌ Script \`${scriptName}\` introuvable dans le dossier \`scripts/\`.\n\n💡 Téléchargez-le depuis GitHub : https://github.com/theo7791l/theoprotect/tree/main/scripts`,
+          ephemeral: true
+        });
+      }
+
+      const instructions = isWindows
+        ? `**Windows:**\n1. Ouvrez le dossier du bot\n2. Double-cliquez sur \`scripts/update.bat\`\n3. Suivez les instructions\n\nOu en ligne de commande :\n\`\`\`\ncd C:\\TheoProtect\\scripts\nupdate.bat\n\`\`\``
+        : `**Linux/macOS:**\n1. Ouvrez un terminal dans le dossier du bot\n2. Rendez le script exécutable :\n\`\`\`bash\nchmod +x scripts/update.sh\n\`\`\`\n3. Lancez-le :\n\`\`\`bash\n./scripts/update.sh\n\`\`\``;
+
+      const embed = new EmbedBuilder()
+        .setColor(0x5865f2)
+        .setTitle('📜 Script de mise à jour manuel')
+        .setDescription(
+          `Le script \`${scriptName}\` permet de mettre à jour le bot automatiquement.\n\n${instructions}`
+        )
+        .addFields(
+          { 
+            name: '✨ Fonctionnalités', 
+            value: '• Vérifie les mises à jour\n• Sauvegarde votre .env\n• Télécharge et installe automatiquement\n• Redéploie les commandes' 
+          }
+        )
+        .setFooter({ text: 'Script disponible dans le dossier scripts/' })
+        .setTimestamp();
+
+      await interaction.reply({ embeds: [embed], ephemeral: true });
+    }
     else if (subcommand === 'install') {
       await interaction.deferReply({ ephemeral: true });
 
@@ -110,18 +161,47 @@ export default {
         return interaction.editReply('❌ Seul le propriétaire du bot peut installer des mises à jour.');
       }
 
+      // Check if Git is available
       try {
-        await interaction.editReply('🔄 Téléchargement de la dernière version...');
+        await execAsync('git --version');
+      } catch (error) {
+        return interaction.editReply(
+          '❌ **Git n\'est pas installé !**\n\n' +
+          '📥 Téléchargez Git depuis : https://git-scm.com/\n\n' +
+          'Ou utilisez `/update script` pour une mise à jour manuelle.'
+        );
+      }
+
+      // Check if we're in a Git repository
+      if (!existsSync('.git')) {
+        return interaction.editReply(
+          '❌ **Ce n\'est pas un dépôt Git !**\n\n' +
+          '💡 Le dossier n\'a pas été cloné avec Git.\n\n' +
+          '**Solution :** Utilisez `/update script` ou téléchargez manuellement depuis GitHub.'
+        );
+      }
+
+      try {
+        await interaction.editReply('🔍 Vérification des mises à jour...');
+
+        // Fetch latest changes
+        await execAsync('git fetch origin main');
+
+        // Check if updates are available
+        const { stdout: diffOutput } = await execAsync('git rev-list HEAD...origin/main --count');
+        const updatesAvailable = parseInt(diffOutput.trim());
+
+        if (updatesAvailable === 0) {
+          return interaction.editReply('✅ Déjà à jour ! Aucune modification nécessaire.');
+        }
+
+        await interaction.editReply(`📦 ${updatesAvailable} mise(s) à jour disponible(s)\n\n🔄 Téléchargement...`);
 
         // Pull from git
-        const { stdout: pullOutput, stderr: pullError } = await execAsync('git pull');
+        const { stdout: pullOutput, stderr: pullError } = await execAsync('git pull origin main');
         
         if (pullError && !pullError.includes('Already up to date')) {
           throw new Error(pullError);
-        }
-
-        if (pullOutput.includes('Already up to date')) {
-          return interaction.editReply('✅ Déjà à jour ! Aucune modification nécessaire.');
         }
 
         await interaction.editReply('📦 Installation des dépendances...');
@@ -164,10 +244,11 @@ export default {
           .setDescription(
             '**Erreur:**\n```\n' + error.message.substring(0, 1000) + '\n```\n\n' +
             '**Solutions:**\n' +
-            '1. Vérifiez que Git est installé\n' +
-            '2. Assurez-vous d\'être dans un dépôt Git valide\n' +
-            '3. Vérifiez les permissions du dossier\n' +
-            '4. Mettez à jour manuellement avec `git pull && npm install`'
+            '1. Utilisez `/update script` pour une mise à jour manuelle\n' +
+            '2. Vérifiez que Git est installé et configuré\n' +
+            '3. Assurez-vous d\'être dans un dépôt Git valide\n' +
+            '4. Vérifiez les permissions du dossier\n\n' +
+            '📚 Guide complet : https://github.com/theo7791l/theoprotect/blob/main/INSTALL.md'
           )
           .setTimestamp();
 
