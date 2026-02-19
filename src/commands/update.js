@@ -1,4 +1,5 @@
-import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
+import pkg from 'discord.js';
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = pkg;
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { readFileSync, existsSync } from 'fs';
@@ -63,44 +64,30 @@ export default {
         const currentVersion = packageJson.version;
 
         const response = await axios.get(
-          'https://api.github.com/repos/theo7791l/theoprotect/releases/latest',
+          'https://api.github.com/repos/theo7791l/theoprotect/commits/main',
           { timeout: 10000 }
         );
 
-        const latestVersion = response.data.tag_name.replace('v', '');
-        const releaseNotes = response.data.body || 'Aucune note de version';
-        const publishedAt = new Date(response.data.published_at);
-
-        const isUpToDate = currentVersion === latestVersion;
+        const latestCommit = response.data.sha.substring(0, 7);
+        const commitDate = new Date(response.data.commit.author.date);
+        const commitMessage = response.data.commit.message;
 
         const embed = new EmbedBuilder()
-          .setColor(isUpToDate ? 0x00ff00 : 0xffa500)
-          .setTitle(isUpToDate ? '✅ Vous êtes à jour !' : '🔄 Mise à jour disponible')
+          .setColor(0x5865f2)
+          .setTitle('🔄 Informations de mise à jour')
           .addFields(
             { name: 'Version actuelle', value: `v${currentVersion}`, inline: true },
-            { name: 'Dernière version', value: `v${latestVersion}`, inline: true },
-            { name: 'Publiée le', value: `<t:${Math.floor(publishedAt.getTime() / 1000)}:R>`, inline: true }
-          );
-
-        if (!isUpToDate) {
-          embed.addFields({
-            name: '📝 Notes de version',
-            value: releaseNotes.substring(0, 1024)
-          });
-          embed.addFields({
-            name: '🔄 Pour mettre à jour',
-            value: 
-              `**Option 1 (Automatique):**\n` +
-              `\`/update install\` (nécessite Git)\n\n` +
-              `**Option 2 (Script manuel):**\n` +
-              `\`/update script\` puis exécutez le script\n\n` +
-              `**Option 3 (Manuel):**\n` +
-              `\`\`\`\ngit pull origin main\nnpm install\nnpm run deploy\n\`\`\``,
-            inline: false
-          });
-        }
-
-        embed.setFooter({ text: 'TheoProtect Auto-Update' })
+            { name: 'Dernier commit', value: latestCommit, inline: true },
+            { name: 'Date', value: `<t:${Math.floor(commitDate.getTime() / 1000)}:R>`, inline: true },
+            { name: '📝 Dernier changement', value: commitMessage.substring(0, 1024) }
+          )
+          .setDescription(
+            '**Pour mettre à jour:**\n' +
+            '1. `/update install` (automatique avec Git)\n' +
+            '2. `/update script` (script manuel)\n' +
+            '3. `git pull && npm install` (manuel)'
+          )
+          .setFooter({ text: 'TheoProtect Auto-Update' })
           .setTimestamp();
 
         await interaction.editReply({ embeds: [embed] });
@@ -110,11 +97,7 @@ export default {
         const errorEmbed = new EmbedBuilder()
           .setColor(0xff0000)
           .setTitle('❌ Erreur de vérification')
-          .setDescription(
-            error.response?.status === 404 
-              ? 'Aucune release trouvée sur GitHub.'
-              : 'Impossible de contacter GitHub. Vérifiez votre connexion.'
-          )
+          .setDescription('Impossible de contacter GitHub. Vérifiez votre connexion.')
           .setTimestamp();
 
         await interaction.editReply({ embeds: [errorEmbed] });
