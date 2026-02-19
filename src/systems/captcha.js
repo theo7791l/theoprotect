@@ -1,16 +1,30 @@
 import { AttachmentBuilder } from 'discord.js';
-import { createCanvas } from 'canvas';
 import config from '../config/config.js';
+
+// Canvas is optional - only required if captcha is enabled
+let Canvas = null;
+let canvasAvailable = false;
+
+try {
+  Canvas = await import('canvas');
+  canvasAvailable = true;
+} catch (error) {
+  console.warn('[Captcha] Canvas not installed - Captcha system disabled');
+  console.warn('[Captcha] Install canvas with: npm install canvas');
+  console.warn('[Captcha] Note: Canvas requires build tools on Windows');
+}
 
 class CaptchaSystem {
   constructor() {
-    this.pendingVerifications = new Map(); // userId -> { code, attempts, timeout }
+    this.pendingVerifications = new Map();
     this.verifiedUsers = new Set();
+    this.enabled = canvasAvailable;
   }
 
-  /**
-   * Generate random captcha code
-   */
+  isAvailable() {
+    return this.enabled;
+  }
+
   generateCode(length = 6) {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = '';
@@ -20,18 +34,19 @@ class CaptchaSystem {
     return code;
   }
 
-  /**
-   * Generate captcha image
-   */
   generateImage(code) {
-    const canvas = createCanvas(300, 100);
+    if (!canvasAvailable || !Canvas) {
+      throw new Error('Canvas not available');
+    }
+
+    const canvas = Canvas.createCanvas(300, 100);
     const ctx = canvas.getContext('2d');
 
-    // Background with noise
+    // Background
     ctx.fillStyle = '#2c2f33';
     ctx.fillRect(0, 0, 300, 100);
 
-    // Add random lines (noise)
+    // Noise lines
     for (let i = 0; i < 5; i++) {
       ctx.strokeStyle = `rgba(255, 255, 255, ${Math.random() * 0.3})`;
       ctx.beginPath();
@@ -40,7 +55,7 @@ class CaptchaSystem {
       ctx.stroke();
     }
 
-    // Draw code with distortion
+    // Draw code
     ctx.font = 'bold 40px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -61,10 +76,11 @@ class CaptchaSystem {
     return canvas.toBuffer();
   }
 
-  /**
-   * Start verification for a member
-   */
   async startVerification(member) {
+    if (!this.isAvailable()) {
+      throw new Error('Captcha system not available - Canvas not installed');
+    }
+
     const code = this.generateCode(config.captcha.length);
     const image = this.generateImage(code);
     const attachment = new AttachmentBuilder(image, { name: 'captcha.png' });
@@ -75,7 +91,6 @@ class CaptchaSystem {
       timestamp: Date.now()
     });
 
-    // Auto-kick after timeout
     setTimeout(() => {
       if (this.pendingVerifications.has(member.id)) {
         member.kick('Captcha non résolu dans le temps imparti').catch(() => {});
@@ -86,9 +101,6 @@ class CaptchaSystem {
     return { attachment, code };
   }
 
-  /**
-   * Verify user's answer
-   */
   verifyAnswer(userId, answer) {
     const verification = this.pendingVerifications.get(userId);
     if (!verification) {
@@ -115,16 +127,10 @@ class CaptchaSystem {
     };
   }
 
-  /**
-   * Check if user is verified
-   */
   isVerified(userId) {
     return this.verifiedUsers.has(userId);
   }
 
-  /**
-   * Remove verification requirement (bypass)
-   */
   bypass(userId) {
     this.verifiedUsers.add(userId);
     this.pendingVerifications.delete(userId);
