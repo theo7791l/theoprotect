@@ -1,23 +1,27 @@
 import Database from 'better-sqlite3';
 import { existsSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
+import { getDatabasePath } from '../utils/paths.js';
 
 class DatabaseManager {
   constructor() {
     this.db = null;
   }
 
-  init(path = './data/theoprotect.db') {
+  init() {
+    const path = getDatabasePath();
+    
     // Create data directory if not exists
     const dir = dirname(path);
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
+      console.log(`📁 Created data directory: ${dir}`);
     }
 
     this.db = new Database(path);
     this.db.pragma('journal_mode = WAL');
     this.createTables();
-    console.log('✅ Database initialized');
+    console.log(`✅ Database initialized: ${path}`);
   }
 
   createTables() {
@@ -251,6 +255,7 @@ class DatabaseManager {
   close() {
     if (this.db) {
       this.db.close();
+      console.log('👋 Database connection closed');
     }
   }
 }
