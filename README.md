@@ -1,158 +1,112 @@
 # 🛡️ TheoProtect
 
-**TheoProtect** est un bot Discord de sécurité avancée 100% open source en Node.js, conçu pour offrir une protection complète contre les raids, le spam, le phishing et les attaques nuke.
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
-[![Discord.js](https://img.shields.io/badge/discord.js-v14-blue)](https://discord.js.org/)
+**Bot Discord de sécurité avancée** - Anti-spam, Anti-Raid, Anti-Nuke, et plus encore.
 
 ## ✨ Fonctionnalités
 
-### 🔒 Sécurité avancée
+### 🚨 Protection Automatique
+- **Anti-Spam** : Détection intelligente avec sanctions progressives
+- **Anti-Flood** : Suppression automatique des messages massifs
+- **Bad Words** : Filtrage de langage inapproprié avec avertissements
+- **Bot Spam Detection** : Suppression silencieuse des messages de bots spammeurs
+- **Auto-Cleanup** : Nettoyage automatique du salon après détection de flood
 
-#### 🛡️ Anti-Spam intelligent
-- Détection multi-niveaux (flood, duplicatas, mentions, emojis, liens)
-- Système de scoring dynamique avec sanctions graduelles
-- Détection de selfbots et patterns Discord
-- 4 niveaux de sécurité : Faible, Moyen, Élevé, Extrême
+### 📊 Dashboard Web
+- **Stats en temps réel** : Graphiques et compteurs en direct
+- **Logs complets** : Historique de toutes les actions
+- **Gestion serveurs** : Vue d'ensemble de tous les serveurs protégés
+- **WebSocket** : Mises à jour instantanées sans rechargement
 
-#### 🚨 Anti-Raid avec détection de patterns
-- Analyse intelligente des nouveaux membres (algorithme Levenshtein)
-- Détection : comptes jeunes, avatars par défaut, noms suspects
-- Mode raid automatique lors de joins massifs (>10 en 10s)
-- Système de quarantaine automatique
-- Tracking des noms coordonnés (attaques organisées)
+### 🔧 Commandes
+- `/update check` - Vérifier les mises à jour
+- `/update install` - Installer et redémarrer automatiquement
+- `/update version` - Voir la version actuelle
 
-#### 🔨 Anti-Nuke révolutionnaire
-- Surveillance des actions critiques en temps réel
-- Thresholds configurables par type d'action
-- Retrait instantané des permissions dangereuses
-- Système de backup automatique (salons, rôles, permissions)
-- Bannissement automatique des attaquants
+## 🚀 Installation
 
-#### 🎯 Anti-Phishing en temps réel
-- Base de données de patterns mise à jour (Discord Nitro scams, Steam, etc.)
-- Intégration Google Safe Browsing API (optionnel)
-- Intégration PhishTank pour vérification externe
-- Détection de TLDs suspects et homograph attacks
-- Système de cache pour optimisation
+### Prérequis
+- Node.js 18+ 
+- Git
+- Windows/Linux/macOS
 
-#### 🔐 Captcha visuel personnalisable
-- Génération d'images avec Canvas (distorsion, rotation)
-- Codes aléatoires de 6 caractères
-- Timeout configurable (5 min par défaut)
-- Tentatives limitées (3 max)
-- Kick automatique en cas d'échec
-
-### 🤖 Modération puissante
-
-#### Commandes disponibles
-- `/warn [user] [reason]` — Avertir un membre
-- `/warnings [user]` — Voir les avertissements
-- `/clearwarns [user]` — Effacer les warnings
-- `/timeout [user] [duration] [reason]` — Timeout
-- `/ban [user] [reason]` — Bannir
-- `/reputation [user]` — Voir la réputation
-
-#### Modération vocale
-- `/voicemod muteall [channel]` — Mute tous les membres
-- `/voicemod unmuteall [channel]` — Unmute tous
-- `/voicemod disconnectall [channel]` — Déconnecter tous
-- `/voicemod moveall [source] [dest]` — Déplacer en masse
-
-### 📊 Fonctionnalités uniques
-
-#### 🏆 Système de réputation
-- Score de confiance pour chaque membre (0-200)
-- Tracking des violations et actions positives
-- Niveaux : Très faible, Faible, Moyen, Bon, Excellent
-- Incrémentation automatique pour activité saine
-
-#### 🔒 Smart Lockdown progressif
-- **Soft** : Bloque les messages uniquement
-- **Medium** : + fichiers et threads
-- **Hard** : + vocal complet
-- **Raid** : Mode urgence (kick nouveaux membres)
-- Auto-escalade selon le niveau de menace
-
-#### 🗄️ Backup & Restauration
-- Sauvegarde complète (salons, rôles, permissions)
-- Historique des backups avec ID
-- Restauration rapide après attaque
-
-#### 📝 Logs détaillés
-- Base de données SQLite persistante
-- Historique complet des actions de modération
-- Tracking des raids avec statistiques
-- Preuves conservées (URLs, patterns détectés)
-
-## 🚀 Installation rapide
-
-### Windows
-
-```powershell
-# 1. Clone le projet
-git clone https://github.com/theo7791l/theoprotect.git
-cd theoprotect
-
-# 2. Installe les dépendances
-npm install
-
-# 3. Configure
-copy .env.example .env
-notepad .env
-
-# 4. Déploie et lance
-npm run deploy
-scripts\start.bat
-```
-
-### Linux/macOS
+### Installation rapide
 
 ```bash
-# 1. Clone le projet
+# 1. Cloner le repository
 git clone https://github.com/theo7791l/theoprotect.git
 cd theoprotect
 
-# 2. Installe les dépendances
+# 2. Installer les dépendances
 npm install
 
-# 3. Configure
+# 3. Configurer le bot
 cp .env.example .env
-nano .env
+# Éditez .env avec votre token Discord
 
-# 4. Déploie et lance
+# 4. Déployer les commandes
 npm run deploy
-chmod +x scripts/start.sh
-./scripts/start.sh
+
+# 5. Démarrer le bot
+npm start
 ```
+
+### Accéder au Dashboard
+
+Une fois le bot démarré, le dashboard est accessible sur :
+```
+http://localhost:3000
+```
+
+## ⚙️ Configuration
+
+### Variables d'environnement (.env)
+
+```env
+DISCORD_TOKEN=votre_token_discord
+APPLICATION_ID=votre_application_id
+DASHBOARD_PORT=3000
+```
+
+### Permissions requises pour le bot
+
+Le bot a besoin des permissions suivantes :
+- ✅ **Manage Messages** (Gérer les messages)
+- ✅ **Timeout Members** (Exclure temporairement des membres)
+- ✅ **Kick Members** (Expulser des membres) - optionnel
+- ✅ **Ban Members** (Bannir des membres) - optionnel
+- ✅ **Read Message History** (Lire l'historique des messages)
+- ✅ **View Channels** (Voir les salons)
+
+## 📊 Dashboard Features
+
+### Stats en temps réel
+- Messages modérés
+- Bad Words détectés
+- Flood détecté
+- Utilisateurs mute
+- Kicks et Bans
+
+### Logs détaillés
+- Horodatage précis
+- Type d'action
+- ID utilisateur et serveur
+- Détails supplémentaires
+
+### Gestion serveurs
+- Statut anti-spam
+- Niveau de protection
+- Statistiques par serveur
 
 ## 🔄 Mise à jour
 
-### Option 1 : Depuis Discord (automatique)
-
-```
-/update check    # Vérifier les mises à jour
-/update install  # Installer automatiquement
-```
-
-### Option 2 : Avec le script (recommandé)
-
-**Windows :**
-```powershell
-cd theoprotect\scripts
-update.bat
-```
-
-**Linux/macOS :**
+### Automatique (recommandé)
 ```bash
-cd theoprotect/scripts
-chmod +x update.sh
-./update.sh
+npm run update
+# ou via Discord:
+/update install
 ```
 
-### Option 3 : Manuel
-
+### Manuelle
 ```bash
 git pull origin main
 npm install
@@ -160,79 +114,53 @@ npm run deploy
 npm start
 ```
 
-## ⚙️ Configuration
+## 🛡️ Sécurité
 
-### Fichier `.env`
+### Détection de Spam
+- **Single Message Flood** : Messages longs, répétitifs ou avec caractères spéciaux
+- **Global Flood** : 10+ messages en 5 secondes
+- **Bot Spam** : Détection et suppression silencieuse
+- **Auto-Cleanup** : Nettoyage automatique du salon après détection
 
-```env
-# Obligatoire
-DISCORD_TOKEN=votre_bot_token
-CLIENT_ID=votre_client_id
-OWNER_ID=votre_user_id
+### Sanctions progressives
+1. **1er flood** : Mute 5 minutes + avertissement
+2. **2e flood** : Mute 30 minutes
+3. **3e flood** : Kick du serveur
 
-# Optionnel
-GUILD_ID=id_serveur_test  # Pour déploiement rapide en dev
-DATABASE_PATH=./data/theoprotect.db
+### Bad Words
+1. **1er avertissement** : Message supprimé + avertissement
+2. **2e avertissement** : Mute 10 minutes
 
-# APIs optionnelles
-GOOGLE_SAFE_BROWSING_KEY=votre_api_key  # Anti-phishing avancé
-```
+## 📝 Logs
 
-### Commandes de configuration
+Le bot log automatiquement toutes les actions dans :
+- **Console** : Logs en temps réel
+- **Database** : Historique complet en SQLite
+- **Dashboard** : Visualisation web
+- **Salon #logs** : Embeds Discord détaillés
 
-```
-/config              # Panel interactif
-/antispam [niveau]   # low, medium, high, extreme
-/antiraid [mode]     # off, detection, protection, lockdown
-/lockdown activate   # Verrouiller le serveur
-/backup create       # Créer une sauvegarde
-```
+## 👥 Support
 
-## 📚 Documentation complète
+Problème ou question ?
+- 🐛 [Issues GitHub](https://github.com/theo7791l/theoprotect/issues)
+- 📚 [Documentation](https://github.com/theo7791l/theoprotect/wiki)
 
-- [📖 Guide d'installation détaillé](INSTALL.md)
-- [📝 Changelog](CHANGELOG.md)
-- [🤝 Guide de contribution](CONTRIBUTING.md)
-- [🐛 Rapporter un bug](https://github.com/theo7791l/theoprotect/issues)
+## 📜 Licence
 
-## 🎨 Comparaison avec RaidProtect
+MIT License - Voir [LICENSE](LICENSE) pour plus de détails
 
-| Fonctionnalité | RaidProtect | TheoProtect |
-|---|:---:|:---:|
-| Anti-spam basique | ✅ | ✅ |
-| Anti-raid | ✅ | ✅ |
-| Captcha | ✅ | ✅ |
-| Anti-Nuke | ❌ | ✅ |
-| Anti-Phishing temps réel | ❌ | ✅ |
-| Système de réputation | ❌ | ✅ |
-| Backup automatique | ❌ | ✅ |
-| Smart Lockdown progressif | ❌ | ✅ |
-| Modération vocale avancée | ❌ | ✅ |
-| Base de données persistante | ❌ | ✅ |
-| Logs détaillés avec preuves | ❌ | ✅ |
-| **Auto-update intégré** | ❌ | ✅ |
-| Open source | ❌ | ✅ |
-| Auto-quarantine intelligente | ❌ | ✅ |
-| Détection de patterns ML | ❌ | ✅ |
+## 🚀 Roadmap
 
-## 🤝 Contribution
-
-Les contributions sont les bienvenues ! Consultez [CONTRIBUTING.md](CONTRIBUTING.md) pour les guidelines.
-
-## 📄 Licence
-
-MIT © [theo7791l](https://github.com/theo7791l)
-
-Voir [LICENSE](LICENSE) pour plus de détails.
-
-## 🔗 Liens
-
-- [GitHub Repository](https://github.com/theo7791l/theoprotect)
-- [Documentation](https://github.com/theo7791l/theoprotect/wiki)
-- [Issues](https://github.com/theo7791l/theoprotect/issues)
+- [x] Anti-Spam avancé
+- [x] Anti-Flood avec cleanup automatique
+- [x] Bad Words detection
+- [x] Dashboard web
+- [x] Système de réputation
+- [ ] Anti-Raid
+- [ ] Captcha
+- [ ] Anti-Nuke
+- [ ] Backup automatique
 
 ---
 
-**⚡ Développé avec passion par [theo7791l](https://github.com/theo7791l)**
-
-*TheoProtect est un projet open source indépendant. Il n'est pas affilié à Discord Inc. ou à RaidProtect.*
+**Fait avec ❤️ par [theo7791l](https://github.com/theo7791l)**

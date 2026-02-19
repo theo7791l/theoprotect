@@ -1,142 +1,79 @@
 import pkg from 'discord.js';
-const { Client, GatewayIntentBits, Collection, Partials } = pkg;
-import { readdirSync, existsSync } from 'fs';
+const { Client, GatewayIntentBits, Collection, ActivityType } = pkg;
+import { readdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import config from './config/config.js';
+import dotenv from 'dotenv';
 import db from './database/database.js';
+import autoAntiSpam from './systems/autoAntiSpam.js';
+
+// Import dashboard
+import './dashboard/server.js';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Initialize database
-try {
-  db.init();
-} catch (error) {
-  console.error('❌ Failed to initialize database:', error);
-  process.exit(1);
-}
-
-// Create client
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildModeration,
-    GatewayIntentBits.GuildPresences,
-    GatewayIntentBits.GuildVoiceStates
-  ],
-  partials: [Partials.Message, Partials.Channel, Partials.GuildMember]
+    GatewayIntentBits.GuildModeration
+  ]
 });
 
 client.commands = new Collection();
-client.buttonHandlers = new Collection();
-client.selectHandlers = new Collection();
 
 // Load commands
 const commandsPath = join(__dirname, 'commands');
-if (existsSync(commandsPath)) {
-  try {
-    const commandFiles = readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-    
-    for (const file of commandFiles) {
-      try {
-        const command = await import(`./commands/${file}`);
-        if (command.default?.data && command.default?.execute) {
-          client.commands.set(command.default.data.name, command.default);
-          console.log(`✅ Loaded command: ${command.default.data.name}`);
-        }
-      } catch (error) {
-        console.error(`❌ Failed to load command ${file}:`, error.message);
-      }
-    }
-    console.log(`✅ Loaded ${client.commands.size} commands`);
-  } catch (error) {
-    console.error('❌ Error reading commands directory:', error);
+const commandFiles = readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+for (const file of commandFiles) {
+  const filePath = join(commandsPath, file);
+  const command = (await import(filePath)).default;
+  
+  if ('data' in command && 'execute' in command) {
+    client.commands.set(command.data.name, command);
+    console.log(`✅ Loaded command: ${command.data.name}`);
+  } else {
+    console.log(`⚠️  [WARNING] Command at ${filePath} is missing required "data" or "execute" property.`);
   }
-} else {
-  console.warn('⚠️  Commands folder not found');
 }
 
 // Load events
 const eventsPath = join(__dirname, 'events');
-if (existsSync(eventsPath)) {
-  try {
-    const eventFiles = readdirSync(eventsPath).filter(file => file.endsWith('.js'));
-    let loadedEvents = 0;
-    
-    for (const file of eventFiles) {
-      try {
-        const event = await import(`./events/${file}`);
-        if (event.default?.name && event.default?.execute) {
-          if (event.default.once) {
-            client.once(event.default.name, (...args) => event.default.execute(...args, client));
-          } else {
-            client.on(event.default.name, (...args) => event.default.execute(...args, client));
-          }
-          console.log(`✅ Loaded event: ${event.default.name}`);
-          loadedEvents++;
-        }
-      } catch (error) {
-        console.error(`❌ Failed to load event ${file}:`, error.message);
-      }
-    }
-    console.log(`✅ Loaded ${loadedEvents} events`);
-  } catch (error) {
-    console.error('❌ Error reading events directory:', error);
+const eventFiles = readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+
+for (const file of eventFiles) {
+  const filePath = join(eventsPath, file);
+  const event = (await import(filePath)).default;
+  
+  if (event.once) {
+    client.once(event.name, (...args) => event.execute(...args, client));
+  } else {
+    client.on(event.name, (...args) => event.execute(...args, client));
   }
-} else {
-  console.warn('⚠️  Events folder not found');
+  
+  console.log(`✅ Loaded event: ${event.name}`);
 }
-
-// Validate configuration
-if (!config.token) {
-  console.error('❌ DISCORD_TOKEN not found in .env file');
-  console.error('Please create a .env file with your bot token');
-  process.exit(1);
-}
-
-if (!config.clientId) {
-  console.error('❌ CLIENT_ID not found in .env file');
-  process.exit(1);
-}
-
-console.log('\n🚀 Starting TheoProtect...');
 
 // Login
-client.login(config.token).catch(error => {
-  console.error('❌ Failed to login:', error.message);
-  console.error('\nPlease check:');
-  console.error('- DISCORD_TOKEN is set in .env');
-  console.error('- Token is valid and not expired');
-  console.error('- Bot has MESSAGE CONTENT and SERVER MEMBERS intents enabled in Discord Developer Portal');
-  process.exit(1);
-});
+client.login(process.env.DISCORD_TOKEN);
+
+console.log('');
+console.log('════════════════════════════════════════');
+console.log('🛡️  TheoProtect Bot Starting...');
+console.log('════════════════════════════════════════');
+console.log('');
 
 // Graceful shutdown
 process.on('SIGINT', () => {
-  console.log('\n👋 Shutting down gracefully...');
+  console.log('\n🔴 Shutting down gracefully...');
+  autoAntiSpam.clearCache();
   db.close();
   client.destroy();
   process.exit(0);
-});
-
-process.on('SIGTERM', () => {
-  console.log('\n👋 Received SIGTERM, shutting down...');
-  db.close();
-  client.destroy();
-  process.exit(0);
-});
-
-// Handle uncaught errors
-process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
-  db.close();
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (error) => {
-  console.error('❌ Unhandled Rejection:', error);
 });
