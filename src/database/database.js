@@ -25,7 +25,7 @@ class DatabaseManager {
       )
     `);
 
-    // Logs table
+    // Logs table (NEW SCHEMA with user_id)
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS action_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,6 +51,7 @@ class DatabaseManager {
         guild_id TEXT NOT NULL,
         user_id TEXT NOT NULL,
         reputation INTEGER DEFAULT 100,
+        last_increment INTEGER DEFAULT 0,
         PRIMARY KEY (guild_id, user_id)
       )
     `);
@@ -145,6 +146,31 @@ class DatabaseManager {
       ON CONFLICT(guild_id, user_id) 
       DO UPDATE SET reputation = reputation + ?
     `).run(guildId, userId, delta, delta);
+  }
+
+  getReputation(guildId, userId) {
+    const row = this.db.prepare(
+      'SELECT reputation FROM user_reputation WHERE guild_id = ? AND user_id = ?'
+    ).get(guildId, userId);
+    
+    return row ? row.reputation : 100;
+  }
+
+  getLastReputationIncrement(guildId, userId) {
+    const row = this.db.prepare(
+      'SELECT last_increment FROM user_reputation WHERE guild_id = ? AND user_id = ?'
+    ).get(guildId, userId);
+    
+    return row ? row.last_increment : 0;
+  }
+
+  setLastReputationIncrement(guildId, userId, timestamp) {
+    this.db.prepare(`
+      INSERT INTO user_reputation (guild_id, user_id, reputation, last_increment)
+      VALUES (?, ?, 100, ?)
+      ON CONFLICT(guild_id, user_id)
+      DO UPDATE SET last_increment = ?
+    `).run(guildId, userId, timestamp, timestamp);
   }
 
   close() {
