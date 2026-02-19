@@ -1,17 +1,22 @@
 {
   "name": "theoprotect",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Bot Discord de sécurité avancée - Anti-spam, Anti-Raid, Anti-Nuke, Captcha et plus",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "deploy": "node src/deploy-commands.js"
+    "deploy": "node src/deploy-commands.js",
+    "update": "git pull && npm install && npm run deploy"
   },
   "keywords": ["discord", "bot", "security", "moderation", "protection"],
   "author": "theo7791l",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/theo7791l/theoprotect.git"
+  },
   "dependencies": {
     "discord.js": "^14.16.3",
     "dotenv": "^16.4.5",
@@ -19,8 +24,5 @@
     "canvas": "^2.11.2",
     "node-cron": "^3.0.3",
     "axios": "^1.7.9"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }
