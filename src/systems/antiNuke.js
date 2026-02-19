@@ -1,160 +1,123 @@
+import db from '../database/database.js';
+
 class AntiNukeSystem {
   constructor() {
-    this.actionHistory = new Map(); // userId -> [actions]
     this.thresholds = {
-      CHANNEL_DELETE: { limit: 3, window: 10000 },
-      CHANNEL_CREATE: { limit: 5, window: 10000 },
-      ROLE_DELETE: { limit: 3, window: 10000 },
-      BAN: { limit: 5, window: 30000 },
-      KICK: { limit: 5, window: 30000 },
-      WEBHOOK_CREATE: { limit: 3, window: 10000 }
+      channelDelete: { limit: 3, time: 10000 }, // 3 channels en 10s
+      channelCreate: { limit: 5, time: 10000 }, // 5 channels en 10s
+      roleDelete: { limit: 3, time: 10000 },
+      roleCreate: { limit: 5, time: 10000 },
+      banAdd: { limit: 5, time: 30000 }, // 5 bans en 30s
+      kickAdd: { limit: 8, time: 30000 },
+      memberRoleUpdate: { limit: 10, time: 5000 } // 10 changements de rôles en 5s
     };
-    this.backups = new Map(); // guildId -> backup data
+    
+    this.actions = new Map(); // userId -> [{action, timestamp}]
   }
 
-  /**
-   * Track and analyze dangerous actions
-   */
-  async trackAction(executor, guild, actionType) {
-    if (!executor || executor.bot) return { isNuke: false };
-    if (executor.id === guild.ownerId) return { isNuke: false };
-
-    const userId = executor.id;
+  trackAction(userId, guildId, actionType) {
+    const key = `${userId}-${guildId}-${actionType}`;
     const now = Date.now();
-
-    if (!this.actionHistory.has(userId)) {
-      this.actionHistory.set(userId, []);
+    
+    if (!this.actions.has(key)) {
+      this.actions.set(key, []);
     }
-
-    const userActions = this.actionHistory.get(userId);
-    userActions.push({ type: actionType, timestamp: now, guildId: guild.id });
-
-    // Clean old actions
+    
+    const userActions = this.actions.get(key);
     const threshold = this.thresholds[actionType];
-    if (!threshold) return { isNuke: false };
-
-    const recentActions = userActions.filter(
-      action => action.type === actionType && 
-                now - action.timestamp < threshold.window &&
-                action.guildId === guild.id
-    );
-
-    this.actionHistory.set(userId, recentActions);
-
-    // Check if threshold exceeded
-    const isNuke = recentActions.length >= threshold.limit;
-
-    return {
-      isNuke,
-      count: recentActions.length,
-      threshold: threshold.limit,
-      action: isNuke ? this.determineResponse(actionType) : null
-    };
+    
+    if (!threshold) return false;
+    
+    // Nettoyer les actions anciennes
+    const validActions = userActions.filter(a => now - a.timestamp < threshold.time);
+    validActions.push({ action: actionType, timestamp: now });
+    this.actions.set(key, validActions);
+    
+    // Vérifier le seuil
+    if (validActions.length >= threshold.limit) {
+      console.log(`[Anti-Nuke] 🚨 Threshold exceeded: ${userId} - ${actionType} (${validActions.length}/${threshold.limit})`);
+      return true;
+    }
+    
+    return false;
   }
 
-  /**
-   * Determine response to nuke attempt
-   */
-  determineResponse(actionType) {
-    return {
-      type: 'BAN',
-      reason: `Anti-Nuke: Tentative de nuke détectée (${actionType})`,
-      removePermissions: true,
-      notify: true
-    };
-  }
-
-  /**
-   * Execute anti-nuke response
-   */
-  async executeResponse(member, action) {
+  async handleNukeAttempt(guild, executor, actionType) {
+    if (!guild || !executor) return;
+    
     try {
-      // Remove dangerous permissions immediately
-      if (action.removePermissions) {
-        const roles = member.roles.cache.filter(role => 
-          role.permissions.has('Administrator') ||
-          role.permissions.has('ManageGuild') ||
-          role.permissions.has('ManageChannels') ||
-          role.permissions.has('ManageRoles') ||
-          role.permissions.has('BanMembers')
-        );
+      console.log(`[Anti-Nuke] ⚠️ Nuke attempt detected: ${executor.tag} - ${actionType}`);
+      
+      // Log dans la database
+      db.logAction(guild.id, {
+        type: 'anti_nuke',
+        user_id: executor.id,
+        action: actionType,
+        timestamp: Date.now()
+      });
+      
+      // Retirer les permissions dangereuses
+      const member = await guild.members.fetch(executor.id).catch(() => null);
+      if (member && member.permissions.has('Administrator')) {
+        const dangerousPerms = [
+          'Administrator',
+          'ManageGuild',
+          'ManageChannels',
+          'ManageRoles',
+          'BanMembers',
+          'KickMembers'
+        ];
         
-        for (const [, role] of roles) {
-          try {
-            await member.roles.remove(role, 'Anti-Nuke: Retrait des permissions dangereuses');
-          } catch (err) {
-            console.error(`Cannot remove role ${role.name}:`, err.message);
+        // Retirer tous les rôles avec permissions dangereuses
+        for (const role of member.roles.cache.values()) {
+          if (role.permissions.any(dangerousPerms) && role.editable) {
+            await member.roles.remove(role).catch(console.error);
+            console.log(`[Anti-Nuke] 🛡️ Removed role: ${role.name} from ${executor.tag}`);
           }
         }
       }
-
-      // Ban the member
-      await member.ban({ reason: action.reason, deleteMessageSeconds: 0 });
-
-      return { success: true, message: `🔨 ${member.user.tag} banni pour tentative de nuke` };
+      
+      // Bannir l'attaquant
+      await guild.members.ban(executor.id, { 
+        reason: `[Anti-Nuke] Suspicious activity detected: ${actionType}` 
+      }).catch(console.error);
+      
+      console.log(`[Anti-Nuke] ✅ Banned ${executor.tag} for nuke attempt`);
+      
+      // Envoyer un log
+      const logChannel = guild.channels.cache.find(c => 
+        c.name.includes('log') || c.name.includes('theoprotect')
+      );
+      
+      if (logChannel && logChannel.isTextBased()) {
+        await logChannel.send({
+          embeds: [{
+            color: 0xff0000,
+            title: '🚨 Anti-Nuke: Attaque détectée',
+            description: `**Utilisateur:** ${executor.tag} (${executor.id})\n**Action:** ${actionType}\n**Sanction:** Ban automatique`,
+            timestamp: new Date().toISOString(),
+            footer: { text: 'TheoProtect Anti-Nuke' }
+          }]
+        }).catch(console.error);
+      }
+      
+      return true;
     } catch (error) {
-      console.error('[AntiNuke] Error executing response:', error);
-      return { success: false, message: error.message };
+      console.error('[Anti-Nuke] Error handling nuke attempt:', error);
+      return false;
     }
   }
 
-  /**
-   * Create guild backup
-   */
-  async createBackup(guild) {
-    try {
-      const backup = {
-        timestamp: Date.now(),
-        guildName: guild.name,
-        channels: [],
-        roles: [],
-        emojis: []
-      };
-
-      // Backup channels
-      for (const [, channel] of guild.channels.cache) {
-        backup.channels.push({
-          id: channel.id,
-          name: channel.name,
-          type: channel.type,
-          position: channel.position,
-          permissions: channel.permissionOverwrites.cache.map(overwrite => ({
-            id: overwrite.id,
-            type: overwrite.type,
-            allow: overwrite.allow.bitfield.toString(),
-            deny: overwrite.deny.bitfield.toString()
-          }))
-        });
+  clearCache() {
+    const now = Date.now();
+    for (const [key, actions] of this.actions.entries()) {
+      const validActions = actions.filter(a => now - a.timestamp < 60000);
+      if (validActions.length === 0) {
+        this.actions.delete(key);
+      } else {
+        this.actions.set(key, validActions);
       }
-
-      // Backup roles
-      for (const [, role] of guild.roles.cache) {
-        if (role.name !== '@everyone') {
-          backup.roles.push({
-            id: role.id,
-            name: role.name,
-            color: role.color,
-            permissions: role.permissions.bitfield.toString(),
-            position: role.position,
-            hoist: role.hoist,
-            mentionable: role.mentionable
-          });
-        }
-      }
-
-      this.backups.set(guild.id, backup);
-      return backup;
-    } catch (error) {
-      console.error('[AntiNuke] Backup error:', error);
-      return null;
     }
-  }
-
-  /**
-   * Get latest backup for guild
-   */
-  getBackup(guildId) {
-    return this.backups.get(guildId);
   }
 }
 
