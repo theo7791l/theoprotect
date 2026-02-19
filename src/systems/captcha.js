@@ -1,13 +1,17 @@
 import { AttachmentBuilder } from 'discord.js';
+import { createRequire } from 'module';
 import config from '../config/config.js';
+
+const require = createRequire(import.meta.url);
 
 // Canvas is optional - only required if captcha is enabled
 let Canvas = null;
 let canvasAvailable = false;
 
 try {
-  Canvas = await import('canvas');
+  Canvas = require('canvas');
   canvasAvailable = true;
+  console.log('✅ [Captcha] Canvas loaded successfully');
 } catch (error) {
   console.warn('[Captcha] Canvas not installed - Captcha system disabled');
   console.warn('[Captcha] Install canvas with: npm install canvas');
@@ -76,29 +80,42 @@ class CaptchaSystem {
     return canvas.toBuffer();
   }
 
-  async startVerification(member) {
+  async sendCaptcha(member) {
     if (!this.isAvailable()) {
-      throw new Error('Captcha system not available - Canvas not installed');
+      console.warn('[Captcha] Canvas not available, skipping captcha for', member.user.tag);
+      return;
     }
 
-    const code = this.generateCode(config.captcha.length);
-    const image = this.generateImage(code);
-    const attachment = new AttachmentBuilder(image, { name: 'captcha.png' });
+    try {
+      const code = this.generateCode(config.captcha.length);
+      const image = this.generateImage(code);
+      const attachment = new AttachmentBuilder(image, { name: 'captcha.png' });
 
-    this.pendingVerifications.set(member.id, {
-      code,
-      attempts: 0,
-      timestamp: Date.now()
-    });
+      this.pendingVerifications.set(member.id, {
+        code,
+        attempts: 0,
+        timestamp: Date.now()
+      });
 
-    setTimeout(() => {
-      if (this.pendingVerifications.has(member.id)) {
-        member.kick('Captcha non résolu dans le temps imparti').catch(() => {});
-        this.pendingVerifications.delete(member.id);
-      }
-    }, config.captcha.timeout);
+      // Envoyer le captcha en DM
+      await member.send({
+        content: `🔒 **Vérification requise pour ${member.guild.name}**\n\nRésolvez ce captcha en envoyant le code visible sur l'image.\nVous avez ${config.captcha.maxAttempts} tentatives et ${Math.floor(config.captcha.timeout / 60000)} minutes.`,
+        files: [attachment]
+      });
 
-    return { attachment, code };
+      console.log(`[Captcha] Sent to ${member.user.tag}`);
+
+      // Kick après timeout
+      setTimeout(() => {
+        if (this.pendingVerifications.has(member.id)) {
+          member.kick('Captcha non résolu dans le temps imparti').catch(() => {});
+          this.pendingVerifications.delete(member.id);
+          console.log(`[Captcha] Kicked ${member.user.tag} (timeout)`);
+        }
+      }, config.captcha.timeout);
+    } catch (error) {
+      console.error('[Captcha] Error sending:', error);
+    }
   }
 
   verifyAnswer(userId, answer) {
