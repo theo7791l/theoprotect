@@ -3,6 +3,7 @@ const { Client, GatewayIntentBits, Collection, ActivityType } = pkg;
 import { readdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { pathToFileURL } from 'url';
 import dotenv from 'dotenv';
 import db from './database/database.js';
 import autoAntiSpam from './systems/autoAntiSpam.js';
@@ -30,7 +31,9 @@ const commandFiles = readdirSync(commandsPath).filter(file => file.endsWith('.js
 
 for (const file of commandFiles) {
   const filePath = join(commandsPath, file);
-  const command = (await import(filePath)).default;
+  // Convert Windows path to file:// URL for ESM
+  const fileURL = pathToFileURL(filePath).href;
+  const command = (await import(fileURL)).default;
   
   if ('data' in command && 'execute' in command) {
     client.commands.set(command.data.name, command);
@@ -46,7 +49,9 @@ const eventFiles = readdirSync(eventsPath).filter(file => file.endsWith('.js'));
 
 for (const file of eventFiles) {
   const filePath = join(eventsPath, file);
-  const event = (await import(filePath)).default;
+  // Convert Windows path to file:// URL for ESM
+  const fileURL = pathToFileURL(filePath).href;
+  const event = (await import(fileURL)).default;
   
   if (event.once) {
     client.once(event.name, (...args) => event.execute(...args, client));
@@ -60,7 +65,8 @@ for (const file of eventFiles) {
 // Start dashboard (async after bot is ready)
 if (process.env.DISABLE_DASHBOARD !== 'true') {
   try {
-    const dashboardModule = await import('./dashboard/server.js');
+    const dashboardURL = pathToFileURL(join(__dirname, 'dashboard', 'server.js')).href;
+    await import(dashboardURL);
     console.log('✅ Dashboard loaded successfully');
   } catch (error) {
     console.error('⚠️  Dashboard failed to load:', error.message);
