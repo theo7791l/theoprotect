@@ -7,9 +7,6 @@ import dotenv from 'dotenv';
 import db from './database/database.js';
 import autoAntiSpam from './systems/autoAntiSpam.js';
 
-// Import dashboard
-import './dashboard/server.js';
-
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -58,6 +55,17 @@ for (const file of eventFiles) {
   }
   
   console.log(`✅ Loaded event: ${event.name}`);
+}
+
+// Start dashboard (async after bot is ready)
+if (process.env.DISABLE_DASHBOARD !== 'true') {
+  try {
+    const dashboardModule = await import('./dashboard/server.js');
+    console.log('✅ Dashboard loaded successfully');
+  } catch (error) {
+    console.error('⚠️  Dashboard failed to load:', error.message);
+    console.log('💡 Bot will continue without dashboard. Set DISABLE_DASHBOARD=true in .env to hide this message.');
+  }
 }
 
 // Login
