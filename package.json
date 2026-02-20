@@ -28,7 +28,8 @@
     "dotenv": "^16.4.7",
     "better-sqlite3": "^11.9.1",
     "express": "^4.21.2",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "axios": "^1.7.9"
   },
   "optionalDependencies": {
     "@napi-rs/canvas": "^0.1.63",
