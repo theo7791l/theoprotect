@@ -7,13 +7,19 @@
   "scripts": {
     "start": "node src/index.js",
     "deploy": "node src/deploy-commands.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "update": "git pull origin main && npm install && npm run deploy",
+    "update:windows": "scripts/update.bat",
+    "update:linux": "bash scripts/update.sh"
   },
   "keywords": [
     "discord",
     "bot",
     "moderation",
-    "security"
+    "security",
+    "anti-spam",
+    "anti-raid",
+    "anti-nuke"
   ],
   "author": "theo7791l",
   "license": "MIT",
