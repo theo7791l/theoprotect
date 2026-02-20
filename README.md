@@ -41,7 +41,7 @@ npm install
 
 # 3. Configurer le bot
 cp .env.example .env
-# Éditez .env avec votre token Discord
+# Éditez .env avec vos tokens Discord
 
 # 4. Déployer les commandes
 npm run deploy
@@ -62,10 +62,33 @@ http://localhost:3000
 ### Variables d'environnement (.env)
 
 ```env
+# Obligatoire
 DISCORD_TOKEN=votre_token_discord
-APPLICATION_ID=votre_application_id
+CLIENT_ID=votre_client_id
+OWNER_ID=votre_discord_user_id
+
+# Optionnel
 DASHBOARD_PORT=3000
+GUILD_ID=votre_serveur_test  # Pour déploiement rapide en dev
 ```
+
+### Obtenir vos tokens Discord
+
+1. **Bot Token et Client ID** :
+   - Allez sur [Discord Developer Portal](https://discord.com/developers/applications)
+   - Créez une application ou sélectionnez-en une
+   - Onglet "Bot" : Copiez le **Token**
+   - Onglet "OAuth2" : Copiez **Application ID** (= Client ID)
+
+2. **Owner ID (votre ID utilisateur)** :
+   - Sur Discord, activez le Mode Développeur (Paramètres > Avancé)
+   - Clic droit sur votre profil > Copier l'identifiant
+
+3. **Activer les Intents** :
+   - Dans l'onglet "Bot" du Developer Portal
+   - Activez **MESSAGE CONTENT INTENT**
+   - Activez **SERVER MEMBERS INTENT**
+   - Activez **PRESENCE INTENT**
 
 ### Permissions requises pour le bot
 
@@ -156,10 +179,13 @@ MIT License - Voir [LICENSE](LICENSE) pour plus de détails
 - [x] Bad Words detection
 - [x] Dashboard web
 - [x] Système de réputation
-- [ ] Anti-Raid
-- [ ] Captcha
-- [ ] Anti-Nuke
-- [ ] Backup automatique
+- [x] Anti-Raid
+- [x] Captcha
+- [x] Anti-Nuke
+- [x] Backup automatique
+- [x] Anti-Phishing
+- [x] NSFW Detection
+- [x] Smart Lockdown
 
 ---
 
